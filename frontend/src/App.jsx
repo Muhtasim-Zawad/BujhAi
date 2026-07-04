@@ -1,9 +1,10 @@
-import ProtegeAIDemo from "./ProtegeAIDemo";
+import { Excalidraw } from "@excalidraw/excalidraw";
+import "@excalidraw/excalidraw/index.css";
 
 function App() {
 	return (
-		<div className="App">
-			<ProtegeAIDemo />
+		<div style={{ height: "100vh", width: "100vw" }}>
+			<Excalidraw />
 		</div>
 	);
 }
