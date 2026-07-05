@@ -25,7 +25,7 @@ import {
 	PromptInputTools,
 	usePromptInputAttachments,
 } from "@/components/ai-elements/prompt-input";
-import { GlobeIcon, Mic } from "lucide-react";
+import { GlobeIcon, Columns, Mic, MessageSquare, PenTool } from "lucide-react";
 import { useState } from "react";
 // import { useChat } from "@ai-sdk/react";
 import {
@@ -38,6 +38,7 @@ import {
 	MessageContent,
 	MessageResponse,
 } from "@/components/ai-elements/message";
+import Canvas from "@/components/layout/Canvas";
 
 const PromptInputAttachmentsDisplay = () => {
 	const attachments = usePromptInputAttachments();
@@ -100,6 +101,7 @@ const InputDemo = () => {
 
 	const [messages, setMessages] = useState([]);
 	const [status, setStatus] = useState("ready");
+	const [mode, setMode] = useState("chat");
 
 	const handleSubmit = async (message) => {
 		const hasText = Boolean(message.text);
@@ -130,86 +132,121 @@ const InputDemo = () => {
 	};
 
 	return (
-		<div className="max-w-4xl mx-auto p-6 relative size-full rounded-lg border">
+		<div className="max-w-4xl mx-auto p-4 relative size-full rounded-lg border">
 			<div className="flex flex-col h-full">
-				<Conversation>
-					<ConversationContent>
-						{messages.map((message) => (
-							<Message from={message.role} key={message.id}>
-								<MessageContent>
-									{message.parts.map((part, i) => {
-										switch (part.type) {
-											case "text":
-												return (
-													<MessageResponse key={`${message.id}-${i}`}>
-														{part.text}
-													</MessageResponse>
-												);
-											default:
-												return null;
-										}
-									})}
-								</MessageContent>
-							</Message>
-						))}
-					</ConversationContent>
-					<ConversationScrollButton />
-				</Conversation>
+				<div className="flex items-center justify-between mb-5">
+					<div className="flex items-center rounded-lg bg-[#282a2c] p-0.5">
+						<button
+							onClick={() => setMode("chat")}
+							className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+								mode === "chat"
+									? "bg-[#3d3f41] text-white shadow-sm"
+									: "text-[#9aa0a6] hover:text-white"
+							}`}
+						>
+							<MessageSquare className="w-4 h-4" />
+							Chat
+						</button>
+						<button
+							onClick={() => setMode("canvas")}
+							className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+								mode === "canvas"
+									? "bg-[#3d3f41] text-white shadow-sm"
+									: "text-[#9aa0a6] hover:text-white"
+							}`}
+						>
+							<PenTool className="w-4 h-4" />
+							Canvas
+						</button>
+					</div>
+					<button className="text-[#c4c7c5] hover:bg-[#2d2f31] p-1.5 rounded-lg transition-colors">
+						<Columns className="w-5 h-5" />
+					</button>
+				</div>
+				{mode === "chat" ? (
+					<>
+						<Conversation>
+							<ConversationContent>
+								{messages.map((message) => (
+									<Message from={message.role} key={message.id}>
+										<MessageContent>
+											{message.parts.map((part, i) => {
+												switch (part.type) {
+													case "text":
+														return (
+															<MessageResponse key={`${message.id}-${i}`}>
+																{part.text}
+															</MessageResponse>
+														);
+													default:
+														return null;
+												}
+											})}
+										</MessageContent>
+									</Message>
+								))}
+							</ConversationContent>
+							<ConversationScrollButton />
+						</Conversation>
 
-				<PromptInput
-					onSubmit={handleSubmit}
-					className="mt-4"
-					globalDrop
-					multiple
-				>
-					<PromptInputHeader>
-						<PromptInputAttachmentsDisplay />
-					</PromptInputHeader>
-					<PromptInputBody>
-						<PromptInputTextarea
-							onChange={(e) => setText(e.target.value)}
-							value={text}
-							className="text-[white]"
-						/>
-					</PromptInputBody>
-					<PromptInputFooter>
-						<PromptInputTools>
-							<PromptInputActionMenu>
-								<PromptInputActionMenuTrigger />
-								<PromptInputActionMenuContent>
-									<PromptInputActionAddAttachments />
-									<PromptInputActionAddScreenshot />
-								</PromptInputActionMenuContent>
-							</PromptInputActionMenu>
-							<PromptInputButton
-								onClick={() => setUseWebSearch(!useWebSearch)}
-								tooltip={{ content: "Use microphone", shortcut: "⌘K" }}
-								variant={useWebSearch ? "default" : "ghost"}
-							>
-								<Mic size={16} />
-								{/* <span>Search</span> */}
-							</PromptInputButton>
-							<PromptInputSelect
-								onValueChange={(value) => {
-									setModel(value);
-								}}
-								value={model}
-							>
-								<PromptInputSelectTrigger>
-									<PromptInputSelectValue />
-								</PromptInputSelectTrigger>
-								<PromptInputSelectContent>
-									{models.map((model) => (
-										<PromptInputSelectItem key={model.id} value={model.id}>
-											{model.name}
-										</PromptInputSelectItem>
-									))}
-								</PromptInputSelectContent>
-							</PromptInputSelect>
-						</PromptInputTools>
-						<PromptInputSubmit disabled={!text && !status} status={status} />
-					</PromptInputFooter>
-				</PromptInput>
+						<PromptInput
+							onSubmit={handleSubmit}
+							className="mt-4"
+							globalDrop
+							multiple
+						>
+							<PromptInputHeader>
+								<PromptInputAttachmentsDisplay />
+							</PromptInputHeader>
+							<PromptInputBody>
+								<PromptInputTextarea
+									onChange={(e) => setText(e.target.value)}
+									value={text}
+									className="text-[white]"
+								/>
+							</PromptInputBody>
+							<PromptInputFooter>
+								<PromptInputTools>
+									<PromptInputActionMenu>
+										<PromptInputActionMenuTrigger />
+										<PromptInputActionMenuContent>
+											<PromptInputActionAddAttachments />
+											<PromptInputActionAddScreenshot />
+										</PromptInputActionMenuContent>
+									</PromptInputActionMenu>
+									<PromptInputButton
+										onClick={() => setUseWebSearch(!useWebSearch)}
+										tooltip={{ content: "Use microphone", shortcut: "⌘K" }}
+										variant={useWebSearch ? "default" : "ghost"}
+									>
+										<Mic size={16} />
+										{/* <span>Search</span> */}
+									</PromptInputButton>
+									<PromptInputSelect
+										onValueChange={(value) => {
+											setModel(value);
+										}}
+										value={model}
+									>
+										<PromptInputSelectTrigger>
+											<PromptInputSelectValue />
+										</PromptInputSelectTrigger>
+										<PromptInputSelectContent>
+											{models.map((model) => (
+												<PromptInputSelectItem key={model.id} value={model.id}>
+													{model.name}
+												</PromptInputSelectItem>
+											))}
+										</PromptInputSelectContent>
+									</PromptInputSelect>
+								</PromptInputTools>
+								<PromptInputSubmit disabled={!text && !status} status={status} />
+							</PromptInputFooter>
+						</PromptInput>
+					</>
+				) : (
+					<Canvas />
+				)}
 			</div>
 		</div>
 	);

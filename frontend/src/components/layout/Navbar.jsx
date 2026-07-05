@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus, Share2, Settings, Grip } from "lucide-react";
+import { Plus, Share2, Settings, Grip, Shell } from "lucide-react";
 
 export default function Navbar() {
 	return (
@@ -8,7 +8,7 @@ export default function Navbar() {
 			<div className="flex items-center gap-4">
 				{/* NotebookLM Abstract Logo Icon */}
 				<div className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#131314]">
-					<svg
+					{/* <svg
 						viewBox="0 0 24 24"
 						fill="none"
 						stroke="currentColor"
@@ -19,7 +19,8 @@ export default function Navbar() {
 							d="M4 12a8 8 0 0116 0M6 12a6 6 0 0112 0M8 12a4 4 0 018 0"
 							strokeLinecap="round"
 						/>
-					</svg>
+					</svg> */}
+					<Shell className="w-10 h-10 text-white bg-black" />
 				</div>
 
 				{/* Notebook Title */}
