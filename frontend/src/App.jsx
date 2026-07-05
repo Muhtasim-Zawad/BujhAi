@@ -2,13 +2,19 @@
 import InputDemo from "./components/layout/DemoConversation";
 import SourcesSidebar from "./components/layout/SourcesSidebar";
 import StudioSidebar from "./components/layout/StudioSidebar";
+import Navbar from "./components/layout/Navbar";
 
 function App() {
 	return (
-		<div className="flex h-screen w-screen p-5 gap-4 overflow-hidden bg-[#131314] box-border">
-			<SourcesSidebar />
-			<InputDemo />
-			<StudioSidebar />
+		<div className="flex flex-col h-screen w-screen bg-[#131314] overflow-hidden">
+			<Navbar />
+
+			{/* Sidebar and canvas content row */}
+			<div className="flex flex-1 p-3 gap-4 overflow-hidden box-border">
+				<SourcesSidebar />
+				<InputDemo />
+				<StudioSidebar />
+			</div>
 		</div>
 	);
 }

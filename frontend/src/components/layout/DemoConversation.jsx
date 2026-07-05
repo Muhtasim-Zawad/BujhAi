@@ -25,7 +25,7 @@ import {
 	PromptInputTools,
 	usePromptInputAttachments,
 } from "@/components/ai-elements/prompt-input";
-import { GlobeIcon } from "lucide-react";
+import { GlobeIcon, Mic } from "lucide-react";
 import { useState } from "react";
 // import { useChat } from "@ai-sdk/react";
 import {
@@ -63,6 +63,7 @@ const PromptInputAttachmentsDisplay = () => {
 };
 
 const models = [
+	{ id: "llama-3.3-70b", name: "llama-3.3-70b" },
 	{ id: "gpt-4o", name: "GPT-4o" },
 	{ id: "claude-opus-4-20250514", name: "Claude 4 Opus" },
 ];
@@ -120,12 +121,12 @@ const InputDemo = () => {
 				parts: [
 					{
 						type: "text",
-						text: "This is a dummy response! Your frontend layout, attachments context, and submission setup are working perfectly.",
+						text: "Great! I've analyzed your document. I see sections about Informed and Uninformed Search, and the foundations of Artificial Intelligence. Where would you like to start teaching?",
 					},
 				],
 			};
 			setMessages((prev) => [...prev, botMessage]);
-		}, 600);
+		}, 1000);
 	};
 
 	return (
@@ -182,11 +183,11 @@ const InputDemo = () => {
 							</PromptInputActionMenu>
 							<PromptInputButton
 								onClick={() => setUseWebSearch(!useWebSearch)}
-								tooltip={{ content: "Search the web", shortcut: "⌘K" }}
+								tooltip={{ content: "Use microphone", shortcut: "⌘K" }}
 								variant={useWebSearch ? "default" : "ghost"}
 							>
-								<GlobeIcon size={16} />
-								<span>Search</span>
+								<Mic size={16} />
+								{/* <span>Search</span> */}
 							</PromptInputButton>
 							<PromptInputSelect
 								onValueChange={(value) => {

@@ -5,11 +5,11 @@ export default function SourcesSidebar() {
 	// Mock source data state
 	const [sources, setSources] = useState([
 		{ id: "1", name: "01. Uninformed_Search.pdf", type: "pdf" },
-		{ id: "2", name: "02. Uninformed_Search.pdf", type: "pdf" },
+		{ id: "2", name: "02. Informed_Search.pdf", type: "pdf" },
 	]);
 
 	// Track selected items by their unique id
-	const [selectedIds, setSelectedIds] = useState(["1"]);
+	const [selectedIds, setSelectedIds] = useState(["1", "2"]);
 
 	const toggleSelectAll = () => {
 		if (selectedIds.length === sources.length) {
@@ -83,7 +83,7 @@ export default function SourcesSidebar() {
 					}`}
 				>
 					{isAllSelected && (
-						<Check className="w-3.5 h-3.5 text-[#1e2022] stroke-[3]" />
+						<Check className="w-3.5 h-3.5 text-[#1e2022] stroke-3" />
 					)}
 				</button>
 			</div>
@@ -100,7 +100,7 @@ export default function SourcesSidebar() {
 						>
 							<div className="flex items-center gap-3 min-w-0">
 								{/* PDF Label Icon Container */}
-								<div className="flex-shrink-0 bg-[#3b1e1e] border border-[#602020] rounded px-1.5 py-1 flex items-center justify-center">
+								<div className="shrink-0 bg-[#3b1e1e] border border-[#602020] rounded px-1.5 py-1 flex items-center justify-center">
 									<span className="text-[9px] font-bold text-[#f28b82]">
 										PDF
 									</span>
@@ -117,14 +117,14 @@ export default function SourcesSidebar() {
 									e.stopPropagation(); // Stops the container click event from double toggling
 									toggleSelectOne(source.id);
 								}}
-								className={`w-5 h-5 rounded flex items-center justify-center transition-colors border flex-shrink-0 ${
+								className={`w-5 h-5 rounded flex items-center justify-center transition-colors border shrink-0 ${
 									isSelected
 										? "bg-[#8e918f] border-[#8e918f]"
 										: "border-[#8e918f] group-hover:border-[#e3e3e3]"
 								}`}
 							>
 								{isSelected && (
-									<Check className="w-3.5 h-3.5 text-[#1e2022] stroke-[3]" />
+									<Check className="w-3.5 h-3.5 text-[#1e2022] stroke-3" />
 								)}
 							</button>
 						</div>

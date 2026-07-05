@@ -1022,7 +1022,7 @@ export const PromptInputActionMenuTrigger = ({
 );
 
 export const PromptInputActionMenuContent = ({ className, ...props }) => (
-	<DropdownMenuContent align="start" className={cn(className)} {...props} />
+	<DropdownMenuContent align="start" className={cn("w-auto", className)} {...props} />
 );
 
 export const PromptInputActionMenuItem = ({ className, ...props }) => (

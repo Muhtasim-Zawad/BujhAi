@@ -104,7 +104,7 @@ export default function StudioSidebar() {
 										</span>
 
 										<button
-											className={`w-4 h-4 rounded flex items-center justify-center transition-colors border flex-shrink-0 ${
+											className={`w-4 h-4 rounded flex items-center justify-center transition-colors border shrink-0 ${
 												subtopic.checked
 													? "bg-[#a8c7fa] border-[#a8c7fa]"
 													: "border-[#8e918f] group-hover:border-[#e3e3e3]"
