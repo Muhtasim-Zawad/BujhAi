@@ -27,7 +27,7 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { GlobeIcon } from "lucide-react";
 import { useState } from "react";
-import { useChat } from "@ai-sdk/react";
+// import { useChat } from "@ai-sdk/react";
 import {
 	Conversation,
 	ConversationContent,
@@ -168,6 +168,7 @@ const InputDemo = () => {
 						<PromptInputTextarea
 							onChange={(e) => setText(e.target.value)}
 							value={text}
+							className="text-[white]"
 						/>
 					</PromptInputBody>
 					<PromptInputFooter>

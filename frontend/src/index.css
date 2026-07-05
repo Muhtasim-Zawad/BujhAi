@@ -2,8 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
-/* ---break---
-*/
+
 @custom-variant dark (&:is(.dark *));
 
 html,
@@ -12,8 +11,7 @@ body,
 	height: 100%;
 	margin: 0;
 }
-/* ---break---
-*/
+
 @theme inline {
 	--font-heading: var(--font-sans);
 	--font-sans: "Geist Variable", sans-serif;
@@ -56,8 +54,7 @@ body,
 	--radius-3xl: calc(var(--radius) * 2.2);
 	--radius-4xl: calc(var(--radius) * 2.6);
 }
-/* ---break---
-*/
+
 :root {
 	--background: oklch(1 0 0);
 	--foreground: oklch(0.145 0 0);
@@ -92,8 +89,7 @@ body,
 	--sidebar-border: oklch(0.922 0 0);
 	--sidebar-ring: oklch(0.708 0 0);
 }
-/* ---break---
-*/
+
 .dark {
 	--background: oklch(0.145 0 0);
 	--foreground: oklch(0.985 0 0);
@@ -127,8 +123,7 @@ body,
 	--sidebar-border: oklch(1 0 0 / 10%);
 	--sidebar-ring: oklch(0.556 0 0);
 }
-/* ---break---
-*/
+
 @layer base {
 	* {
 		@apply border-border outline-ring/50;

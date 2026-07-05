@@ -4,7 +4,8 @@ import { Plus, Globe, Sparkles, Search, Columns, Check } from "lucide-react";
 export default function SourcesSidebar() {
 	// Mock source data state
 	const [sources, setSources] = useState([
-		{ id: "1", name: "02. Uninformed_Search.pdf", type: "pdf" },
+		{ id: "1", name: "01. Uninformed_Search.pdf", type: "pdf" },
+		{ id: "2", name: "02. Uninformed_Search.pdf", type: "pdf" },
 	]);
 
 	// Track selected items by their unique id
@@ -30,7 +31,7 @@ export default function SourcesSidebar() {
 		sources.length > 0 && selectedIds.length === sources.length;
 
 	return (
-		<div className="w-[320px] h-full bg-[#1e2022] text-[#e3e3e3] p-4 rounded-lg flex flex-col font-sans select-none">
+		<div className="w-[320px] h-full bg-[#1e2022] text-[#e3e3e3] p-4 rounded-lg flex flex-col font-sans">
 			{/* Header */}
 			<div className="flex items-center justify-between mb-5">
 				<h2 className="text-xl font-medium text-white">Sources</h2>
@@ -71,7 +72,7 @@ export default function SourcesSidebar() {
 			</div>
 
 			{/* Select All Toggle */}
-			<div className="flex items-center justify-end gap-3 px-1 mb-4 text-sm">
+			<div className="flex items-center justify-end gap-3 px-2 mb-4 text-sm">
 				<span className="text-[#c4c7c5] font-medium">Select all</span>
 				<button
 					onClick={toggleSelectAll}
@@ -88,14 +89,14 @@ export default function SourcesSidebar() {
 			</div>
 
 			{/* Sources List */}
-			<div className="flex-1 overflow-y-auto space-y-2">
+			<div className="flex-1 overflow-y-auto space-y-1">
 				{sources.map((source) => {
 					const isSelected = selectedIds.includes(source.id);
 					return (
 						<div
 							key={source.id}
 							onClick={() => toggleSelectOne(source.id)}
-							className="flex items-center justify-between p-3 rounded-xl hover:bg-[#282a2c] cursor-pointer transition-colors group"
+							className="flex items-center justify-between p-2 gap-1 rounded-xl hover:bg-[#282a2c] cursor-pointer transition-colors group"
 						>
 							<div className="flex items-center gap-3 min-w-0">
 								{/* PDF Label Icon Container */}

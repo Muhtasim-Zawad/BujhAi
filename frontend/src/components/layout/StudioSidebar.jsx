@@ -48,25 +48,25 @@ export default function StudioSidebar() {
 	const cards = [
 		{
 			title: "Add Note",
-			icon: <PlusCircle className="w-5 h-5 text-[#a8c7fa]" />,
+			icon: <PlusCircle className="w-3 h-3 text-[#a8c7fa]" />,
 			bg: "bg-[#21252e] hover:bg-[#2a303d]",
 		},
 		{
 			title: "Flashcards",
-			icon: <Layers className="w-5 h-5 text-[#fcb1a6]" />,
+			icon: <Layers className="w-3 h-3 text-[#fcb1a6]" />,
 			bg: "bg-[#2d2121] hover:bg-[#3b2b2b]",
 		},
 		{
-			title: "Knowledge Graph",
-			icon: <Network className="w-5 h-5 text-[#fbc2eb]" />,
+			title: "Knowl. Graph",
+			icon: <Network className="w-3 h-3 text-[#fbc2eb]" />,
 			bg: "bg-[#2c202b] hover:bg-[#3a2a39]",
 		},
 	];
 
 	return (
-		<div className="w-[320px] h-full bg-[#1e2022] text-[#e3e3e3] p-4 rounded-lg flex flex-shrink-0 flex-col font-sans select-none border-l border-[#2d2f31]">
+		<div className="w-[320px] h-full bg-[#1e2022] text-[#e3e3e3] p-4 rounded-lg flex shrink-0 flex-col font-sans border-l border-[#2d2f31]">
 			{/* HEADER */}
-			<div className="flex items-center justify-between mb-4 flex-shrink-0">
+			<div className="flex items-center justify-between mb-4 shrink-0">
 				<h2 className="text-xl font-medium text-white">Studio</h2>
 				<button className="text-[#c4c7c5] hover:bg-[#2d2f31] p-1.5 rounded-lg transition-colors">
 					<Columns className="w-5 h-5" />
@@ -123,20 +123,20 @@ export default function StudioSidebar() {
 			</div>
 
 			{/* SECTION 2: STUDIO CARDS */}
-			<div className="pt-4 flex-shrink-0">
+			<div className="pt-4 shrink-0">
 				<p className="text-xs font-semibold tracking-wider text-[#9aa0a6] uppercase mb-3 px-1">
 					Tools & Actions
 				</p>
 
-				<div className="grid grid-cols-1 gap-2.5">
+				<div className="grid grid-cols-2 gap-2.5">
 					{cards.map((card, idx) => (
 						<div
 							key={idx}
 							className={`flex items-center justify-between p-3.5 rounded-2xl cursor-pointer transition-all duration-200 border border-transparent hover:border-[#444746]/40 ${card.bg}`}
 						>
-							<div className="flex items-center gap-3.5 min-w-0">
-								<div className="flex-shrink-0">{card.icon}</div>
-								<span className="text-sm font-medium text-white truncate">
+							<div className="flex flex-col items-start gap-1.5 min-w-0">
+								<div className="shrink-0">{card.icon}</div>
+								<span className="text-xs font-medium text-white truncate">
 									{card.title}
 								</span>
 							</div>
