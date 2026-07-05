@@ -30,7 +30,7 @@ export default function SourcesSidebar() {
 		sources.length > 0 && selectedIds.length === sources.length;
 
 	return (
-		<div className="w-[320px] h-screen bg-[#1e2022] text-[#e3e3e3] p-4 flex flex-col font-sans select-none">
+		<div className="w-[320px] h-full bg-[#1e2022] text-[#e3e3e3] p-4 rounded-lg flex flex-col font-sans select-none">
 			{/* Header */}
 			<div className="flex items-center justify-between mb-5">
 				<h2 className="text-xl font-medium text-white">Sources</h2>
