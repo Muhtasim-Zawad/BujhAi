@@ -68,35 +68,64 @@ const models = [
 ];
 
 const InputDemo = () => {
-	// Fixed: Removed TypeScript type assertions <string> and <boolean>
 	const [text, setText] = useState("");
 	const [model, setModel] = useState(models[0].id);
 	const [useWebSearch, setUseWebSearch] = useState(false);
 
-	const { messages, status, sendMessage } = useChat();
+	// const { messages, status, sendMessage } = useChat();
 
-	// Fixed: Removed (message: PromptInputMessage) type typing
-	const handleSubmit = (message) => {
+	// const handleSubmit = (message) => {
+	// 	const hasText = Boolean(message.text);
+	// 	const hasAttachments = Boolean(message.files?.length);
+
+	// 	if (!(hasText || hasAttachments)) {
+	// 		return;
+	// 	}
+
+	// 	sendMessage(
+	// 		{
+	// 			text: message.text || "Sent with attachments",
+	// 			files: message.files,
+	// 		},
+	// 		{
+	// 			body: {
+	// 				model: model,
+	// 				webSearch: useWebSearch,
+	// 			},
+	// 		},
+	// 	);
+	// 	setText("");
+	// };
+
+	const [messages, setMessages] = useState([]);
+	const [status, setStatus] = useState("ready");
+
+	const handleSubmit = async (message) => {
 		const hasText = Boolean(message.text);
 		const hasAttachments = Boolean(message.files?.length);
+		if (!(hasText || hasAttachments)) return;
 
-		if (!(hasText || hasAttachments)) {
-			return;
-		}
-
-		sendMessage(
-			{
-				text: message.text || "Sent with attachments",
-				files: message.files,
-			},
-			{
-				body: {
-					model: model,
-					webSearch: useWebSearch,
-				},
-			},
-		);
+		const userMessage = {
+			id: crypto.randomUUID(),
+			role: "user",
+			parts: [{ type: "text", text: message.text || "Sent with attachments" }],
+		};
+		setMessages((prev) => [...prev, userMessage]);
 		setText("");
+
+		setTimeout(() => {
+			const botMessage = {
+				id: crypto.randomUUID(),
+				role: "assistant",
+				parts: [
+					{
+						type: "text",
+						text: "This is a dummy response! Your frontend layout, attachments context, and submission setup are working perfectly.",
+					},
+				],
+			};
+			setMessages((prev) => [...prev, botMessage]);
+		}, 600);
 	};
 
 	return (
