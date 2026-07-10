@@ -3,10 +3,13 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 
-html,
+html {
+	height: 100%;
+}
+
 body,
 #root {
-	height: 100%;
+	min-height: 100%;
 	margin: 0;
 }
 
