@@ -6,9 +6,8 @@ import { ProjectCard } from "./components/layout/ProjectCard";
 
 function App() {
 	return (
-		// <div className="flex flex-col h-screen w-screen bg-[#131314] overflow-hidden">
-		<div>
-			<ProjectCard />
+		<div className="flex flex-col h-screen w-screen overflow-hidden">
+			{/* <ProjectCard /> */}
 		</div>
 	);
 }
