@@ -90,6 +90,7 @@ export default function ChatInterface({ projectId }) {
 
 	const onRubricUpdate = useCallback((updates) => {
 		window.__rubricUpdates = updates;
+		window.dispatchEvent(new CustomEvent("rubric-update", { detail: updates }));
 	}, []);
 
 	const onStudentStart = useCallback(() => {

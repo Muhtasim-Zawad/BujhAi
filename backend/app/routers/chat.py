@@ -34,11 +34,15 @@ async def chat_stream(
     if not project:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
+    metadata = {}
+    if body.canvas_data:
+        metadata["canvas_data"] = body.canvas_data
+
     user_msg = Message(
         project_id=project_id,
         role="user",
         content=body.message,
-        metadata_json="{}",
+        metadata_json=json.dumps(metadata),
     )
     db.add(user_msg)
     await db.commit()
@@ -100,7 +104,7 @@ async def chat_stream(
         full_response = ""
         try:
             async for token_json in stream_chat_agent(
-                project_id, history, body.message, modules_data, rubrics_data,
+                project_id, history, body.message, modules_data, rubrics_data, body.canvas_data,
             ):
                 yield f"data: {token_json}\n\n"
                 data = json.loads(token_json)

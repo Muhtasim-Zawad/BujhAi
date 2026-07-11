@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ChevronRight, Plus, Trash2, Edit3 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ChevronRight, Plus, Trash2, Edit3, CheckCircle2 } from "lucide-react";
 import {
 	Accordion,
 	AccordionItem,
@@ -23,6 +23,18 @@ function uid() {
 
 export default function ChatRightSidebar() {
 	const [isCollapsed, setIsCollapsed] = useState(false);
+	const [rubricProgress, setRubricProgress] = useState({ checked: 0, total: 0 });
+
+	useEffect(() => {
+		const handler = (e) => {
+			const updates = e.detail || [];
+			const checked = updates.filter((u) => u.checked).length;
+			setRubricProgress({ checked, total: updates.length });
+		};
+		window.addEventListener("rubric-update", handler);
+		return () => window.removeEventListener("rubric-update", handler);
+	}, []);
+
 	const [modules, setModules] = useState([
 		{
 			id: uid(),
@@ -186,6 +198,21 @@ export default function ChatRightSidebar() {
 						<ProgressLabel>Overall Progress</ProgressLabel>
 						<ProgressValue>{globalProgress}%</ProgressValue>
 					</Progress>
+
+					{/* Rubric progress */}
+					{rubricProgress.total > 0 && (
+						<div className="flex items-center gap-2 rounded-lg border border-black/20 bg-purple-50 px-3 py-2">
+							<CheckCircle2 className="size-4 text-purple-600" />
+							<div className="flex flex-1 items-center justify-between text-xs">
+								<span className="font-medium text-purple-700">
+									Rubric Criteria
+								</span>
+								<span className="text-purple-600">
+									{rubricProgress.checked}/{rubricProgress.total}
+								</span>
+							</div>
+						</div>
+					)}
 
 					{/* Modules */}
 					{modules.length > 0 ? (

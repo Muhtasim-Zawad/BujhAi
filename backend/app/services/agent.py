@@ -58,6 +58,7 @@ class AgentState(TypedDict):
     context_chunks: list[dict]
     modules_json: str
     rubrics_json: str
+    canvas_data: str
     evaluator_response: str
     rubric_updates: list[dict]
     student_response: str
@@ -101,6 +102,10 @@ def _format_core_context(state: AgentState) -> str:
                 parts.append(f"{r['title']}: {checked_count}/{len(pts)} criteria met")
     except (json.JSONDecodeError, KeyError):
         pass
+
+    canvas_raw = state.get("canvas_data") or ""
+    if canvas_raw:
+        parts.append(f"--- User's Canvas Drawing ---\n{canvas_raw}")
 
     modules_raw = state.get("modules_json") or "[]"
     try:
@@ -211,6 +216,7 @@ async def stream_chat_agent(
     user_input: str,
     modules_data: list[dict] | None = None,
     rubrics_data: list[dict] | None = None,
+    canvas_data: str | None = None,
 ) -> AsyncGenerator[str, None]:
     config = {"configurable": {"thread_id": project_id}}
 
@@ -224,6 +230,7 @@ async def stream_chat_agent(
             "context_chunks": [],
             "modules_json": json.dumps(modules_data or []),
             "rubrics_json": json.dumps(rubrics_data or []),
+            "canvas_data": canvas_data or "",
             "evaluator_response": "",
             "rubric_updates": [],
             "student_response": "",
