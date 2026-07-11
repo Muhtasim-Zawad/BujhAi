@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { Plus, Trash2, FolderOpen, BookOpen, BarChart3 } from "lucide-react";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { fetchResources, fetchStats } from "@/utils/api";
 
 const sections = [
 	{ value: "projects", label: "Projects" },
@@ -46,6 +47,34 @@ export default function Dashboard({
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [newProject, setNewProject] = useState({ title: "", description: "" });
 	const [deletingProject, setDeletingProject] = useState(null);
+	const [resourcesMap, setResourcesMap] = useState({});
+	const [statsMap, setStatsMap] = useState({});
+	const [loadingResources, setLoadingResources] = useState({});
+	const [loadingStats, setLoadingStats] = useState({});
+
+	async function loadResources(projectId) {
+		if (resourcesMap[projectId] || loadingResources[projectId]) return;
+		setLoadingResources((p) => ({ ...p, [projectId]: true }));
+		try {
+			const data = await fetchResources(projectId);
+			setResourcesMap((p) => ({ ...p, [projectId]: data }));
+		} catch {
+			setResourcesMap((p) => ({ ...p, [projectId]: [] }));
+		}
+		setLoadingResources((p) => ({ ...p, [projectId]: false }));
+	}
+
+	async function loadStats(projectId) {
+		if (statsMap[projectId] || loadingStats[projectId]) return;
+		setLoadingStats((p) => ({ ...p, [projectId]: true }));
+		try {
+			const data = await fetchStats(projectId);
+			setStatsMap((p) => ({ ...p, [projectId]: data }));
+		} catch {
+			setStatsMap((p) => ({ ...p, [projectId]: null }));
+		}
+		setLoadingStats((p) => ({ ...p, [projectId]: false }));
+	}
 
 	function createProject() {
 		if (!newProject.title.trim()) return;
@@ -165,37 +194,40 @@ export default function Dashboard({
 							</div>
 						) : (
 							projects.map((project) => (
-								<Accordion key={project.title}>
+								<Accordion
+									key={project.id}
+									onValueChange={(val) => {
+										if (val) loadResources(project.id);
+									}}
+								>
 									<AccordionItem>
 										<AccordionTrigger>
 											{project.title}
 										</AccordionTrigger>
 										<AccordionContent>
-											<div className="flex flex-col gap-3">
-												{project.modules.map((mod) => (
-													<Accordion key={mod.title}>
-														<AccordionItem>
-															<AccordionTrigger className="text-sm">
-																{mod.title}
-															</AccordionTrigger>
-															<AccordionContent>
-																<div className="flex flex-col gap-2">
-																	{mod.resources.map(
-																		(r, i) => (
-																			<p
-																				key={i}
-																				className="text-sm text-muted-foreground"
-																			>
-																				{r}
-																			</p>
-																		)
-																	)}
-																</div>
-															</AccordionContent>
-														</AccordionItem>
-													</Accordion>
-												))}
-											</div>
+											{loadingResources[project.id] ? (
+												<div className="flex items-center justify-center py-4">
+													<Skeleton className="h-4 w-32 rounded bg-muted" />
+												</div>
+											) : resourcesMap[project.id]?.length > 0 ? (
+												<div className="flex flex-col gap-3">
+													{resourcesMap[project.id].map((res) => (
+														<div key={res.id} className="rounded-lg border border-black/20 bg-muted/30 p-3">
+															<p className="text-sm font-medium">{res.title}</p>
+															<p className="mt-1 text-xs text-muted-foreground">{res.content}</p>
+															{res.resource_type && (
+																<span className="mt-1 inline-block rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+																	{res.resource_type.replace(/_/g, " ")}
+																</span>
+															)}
+														</div>
+													))}
+												</div>
+											) : (
+												<p className="py-2 text-center text-sm text-muted-foreground">
+													No resources yet. Upload materials first.
+												</p>
+											)}
 										</AccordionContent>
 									</AccordionItem>
 								</Accordion>
@@ -219,51 +251,68 @@ export default function Dashboard({
 							</div>
 						) : (
 							projects.map((project) => (
-								<Accordion key={project.title}>
+								<Accordion
+									key={project.id}
+									onValueChange={(val) => {
+										if (val) loadStats(project.id);
+									}}
+								>
 									<AccordionItem>
 										<AccordionTrigger>
 											{project.title}
 										</AccordionTrigger>
 										<AccordionContent>
-											<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-												{project.modules.map((mod) => (
-													<Card key={mod.title}>
+											{loadingStats[project.id] ? (
+												<div className="flex items-center justify-center py-4">
+													<Skeleton className="h-4 w-32 rounded bg-muted" />
+												</div>
+											) : statsMap[project.id] ? (
+												<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+													<Card>
 														<CardHeader>
-															<CardTitle>
-																{mod.title}
-															</CardTitle>
+															<CardTitle>Materials</CardTitle>
+															<CardContent className="pt-0 px-0">
+																<p className="text-2xl font-bold">{statsMap[project.id].total_materials}</p>
+																<p className="text-xs text-muted-foreground">{statsMap[project.id].total_chunks} chunks indexed</p>
+															</CardContent>
 														</CardHeader>
-														<CardContent>
-															<div className="flex flex-col gap-2">
-																<div className="flex justify-between text-sm">
-																	<span className="text-muted-foreground">
-																		Score
-																	</span>
-																	<span className="font-medium">
-																		{mod.stats.score}
-																	</span>
-																</div>
-																<div className="flex justify-between text-sm">
-																	<span className="text-muted-foreground">
-																		Completion
-																	</span>
-																	<span className="font-medium">
-																		{mod.stats.completion}%
-																	</span>
-																</div>
-																<div className="flex justify-between text-sm">
-																	<span className="text-muted-foreground">
-																		Accuracy
-																	</span>
-																	<span className="font-medium">
-																		{mod.stats.accuracy}%
-																	</span>
-																</div>
-															</div>
-														</CardContent>
 													</Card>
-												))}
-											</div>
+													<Card>
+														<CardHeader>
+															<CardTitle>Messages</CardTitle>
+															<CardContent className="pt-0 px-0">
+																<p className="text-2xl font-bold">{statsMap[project.id].total_messages}</p>
+															</CardContent>
+														</CardHeader>
+													</Card>
+													<Card>
+														<CardHeader>
+															<CardTitle>Modules</CardTitle>
+															<CardContent className="pt-0 px-0">
+																<p className="text-2xl font-bold">{statsMap[project.id].total_modules}</p>
+																<p className="text-xs text-muted-foreground">
+																	{statsMap[project.id].module_points_completed}/{statsMap[project.id].module_points_total} points
+																</p>
+															</CardContent>
+														</CardHeader>
+													</Card>
+													<Card>
+														<CardHeader>
+															<CardTitle>Rubrics</CardTitle>
+															<CardContent className="pt-0 px-0">
+																<p className="text-2xl font-bold">{statsMap[project.id].total_rubrics}</p>
+																<p className="text-xs text-muted-foreground">
+																	{statsMap[project.id].rubric_criteria_checked}/{statsMap[project.id].rubric_criteria_total} criteria
+																</p>
+															</CardContent>
+														</CardHeader>
+													</Card>
+												</div>
+											) : (
+												<p className="py-2 text-center text-sm text-muted-foreground">
+													No stats yet.
+												</p>
+											)}
 										</AccordionContent>
 									</AccordionItem>
 								</Accordion>

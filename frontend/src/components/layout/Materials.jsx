@@ -89,6 +89,8 @@ export default function Materials({ projectId }) {
 		try {
 			const result = await uploadMaterial(projectId, file);
 			setMaterials((prev) => [...prev, result.material]);
+			const freshRubrics = await fetchRubrics(projectId);
+			setRubrics(freshRubrics);
 			if (result.generated_modules?.length) {
 				window.dispatchEvent(
 					new CustomEvent("modules-generated", { detail: result.generated_modules }),

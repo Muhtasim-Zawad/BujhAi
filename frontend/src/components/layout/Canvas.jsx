@@ -10,6 +10,17 @@ export function getCanvasScene(excalidrawRef) {
 	return JSON.stringify(elements);
 }
 
+export function loadCanvasScene(excalidrawRef, sceneJson) {
+	const api = excalidrawRef?.current;
+	if (!api || !sceneJson) return;
+	try {
+		const elements = JSON.parse(sceneJson);
+		api.updateScene({ elements });
+	} catch {
+		// ignore invalid JSON
+	}
+}
+
 export function clearCanvas(excalidrawRef) {
 	const api = excalidrawRef?.current;
 	if (!api) return;

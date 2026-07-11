@@ -4,8 +4,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import Canvas, { getCanvasScene, clearCanvas } from "@/components/layout/Canvas";
-import { streamChat, sendStt } from "@/utils/api";
+import Canvas, { getCanvasScene, clearCanvas, loadCanvasScene } from "@/components/layout/Canvas";
+import { streamChat, sendStt, fetchCanvas, saveCanvas } from "@/utils/api";
 import {
 	Send,
 	Paperclip,
@@ -48,6 +48,8 @@ export default function ChatInterface({ projectId }) {
 	const timerRef = useRef(null);
 	const currentPersonaRef = useRef(null);
 	const evaluatorMsgIdRef = useRef(null);
+	const autoSaveTimerRef = useRef(null);
+	const [savedCanvasScene, setSavedCanvasScene] = useState(null);
 
 	useEffect(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -58,6 +60,45 @@ export default function ChatInterface({ projectId }) {
 			if (timerRef.current) clearInterval(timerRef.current);
 		};
 	}, []);
+
+	useEffect(() => {
+		if (!projectId) return;
+		fetchCanvas(projectId)
+			.then((scene) => {
+				if (scene?.scene_data) {
+					setSavedCanvasScene(scene.scene_data);
+				}
+			})
+			.catch(() => {});
+	}, [projectId]);
+
+	useEffect(() => {
+		if (showCanvas && savedCanvasScene) {
+			loadCanvasScene(excalidrawRef, savedCanvasScene);
+		}
+	}, [showCanvas, savedCanvasScene]);
+
+	useEffect(() => {
+		if (!showCanvas || !projectId) {
+			if (autoSaveTimerRef.current) {
+				clearInterval(autoSaveTimerRef.current);
+				autoSaveTimerRef.current = null;
+			}
+			return;
+		}
+		autoSaveTimerRef.current = setInterval(() => {
+			const sceneData = getCanvasScene(excalidrawRef);
+			if (sceneData) {
+				saveCanvas(projectId, sceneData).catch(() => {});
+			}
+		}, 10000);
+		return () => {
+			if (autoSaveTimerRef.current) {
+				clearInterval(autoSaveTimerRef.current);
+				autoSaveTimerRef.current = null;
+			}
+		};
+	}, [showCanvas, projectId]);
 
 	const onEvaluatorStart = useCallback(() => {
 		const id = Date.now();
@@ -149,6 +190,10 @@ export default function ChatInterface({ projectId }) {
 
 		if (showCanvas && canvasData) {
 			clearCanvas(excalidrawRef);
+		}
+
+		if (canvasData && projectId) {
+			saveCanvas(projectId, canvasData).catch(() => {});
 		}
 
 		if (!projectId) {
@@ -245,7 +290,15 @@ export default function ChatInterface({ projectId }) {
 			{/* Header */}
 			<div className="flex items-center justify-end border-b-2 border-black bg-card px-4 py-2">
 				<button
-					onClick={() => setShowCanvas((v) => !v)}
+					onClick={() => {
+						if (showCanvas && projectId) {
+							const sceneData = getCanvasScene(excalidrawRef);
+							if (sceneData) {
+								saveCanvas(projectId, sceneData).catch(() => {});
+							}
+						}
+						setShowCanvas((v) => !v);
+					}}
 					className="flex cursor-pointer items-center gap-1.5 rounded-md border-2 border-black bg-background px-3 py-1.5 text-xs font-medium shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-y-0.5 active:translate-y-1 active:shadow-none"
 				>
 					{showCanvas ? (

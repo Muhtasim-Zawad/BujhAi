@@ -285,6 +285,24 @@ export async function deleteModulePoint(projectId, moduleId, pointId) {
   if (!res.ok) throw new Error(`Delete point failed: HTTP ${res.status}`);
 }
 
+// ---- Canvas ----
+
+export async function fetchCanvas(projectId) {
+  const res = await fetch(`${BASE}/projects/${projectId}/canvas`);
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export async function saveCanvas(projectId, sceneData) {
+  const res = await fetch(`${BASE}/projects/${projectId}/canvas`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ scene_data: sceneData }),
+  });
+  if (!res.ok) throw new Error(`Save canvas failed: HTTP ${res.status}`);
+  return res.json();
+}
+
 // ---- Stats ----
 
 export async function fetchStats(projectId) {

@@ -2,7 +2,6 @@ import {
 	NavigationMenu,
 	NavigationMenuContent,
 	NavigationMenuItem,
-	NavigationMenuLink,
 	NavigationMenuList,
 	NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
@@ -66,22 +65,16 @@ export default function Navbar({ projects = [], onCreateProject, onOpenProject }
 								</NavigationMenuContent>
 							</NavigationMenuItem>
 							<NavigationMenuItem>
-								<NavigationMenuLink
-									href="#"
-									className="flex items-center gap-1.5 font-semibold text-sm transition-colors hover:bg-primary-hover hover:text-primary-foreground focus:bg-primary-hover focus:text-primary-foreground data-active:bg-primary-hover data-active:text-primary-foreground"
-								>
+								<span className="flex items-center gap-1.5 font-semibold text-sm text-muted-foreground cursor-default">
 									<BookOpen size={18} strokeWidth={2.5} />
 									Learn
-								</NavigationMenuLink>
+								</span>
 							</NavigationMenuItem>
 							<NavigationMenuItem>
-								<NavigationMenuLink
-									href="#"
-									className="flex items-center gap-1.5 font-semibold text-sm transition-colors hover:bg-primary-hover hover:text-primary-foreground focus:bg-primary-hover focus:text-primary-foreground data-active:bg-primary-hover data-active:text-primary-foreground"
-								>
+								<span className="flex items-center gap-1.5 font-semibold text-sm text-muted-foreground cursor-default">
 									<Palette size={18} strokeWidth={2.5} />
 									Canvas
-								</NavigationMenuLink>
+								</span>
 							</NavigationMenuItem>
 						</NavigationMenuList>
 					</NavigationMenu>
