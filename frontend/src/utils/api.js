@@ -4,7 +4,7 @@ const BASE = import.meta.env.VITE_API_URL || "http://localhost:8999";
  * Stream a chat message via SSE.
  * @param {string} projectId
  * @param {string} message
- * @param {object} callbacks - { onEvaluatorStart, onEvalText, onRubricUpdate, onStudentStart, onStudentToken, onFinish, onError }
+ * @param {object} callbacks - { onEvaluatorStart, onText, onRubricUpdate, onStudentStart, onFinish, onError }
  * @param {string|null} canvasData - optional serialized Excalidraw scene JSON
  */
 export async function streamChat(projectId, message, callbacks, canvasData = null) {
@@ -78,7 +78,7 @@ export async function sendStt(projectId, audioBlob) {
   const formData = new FormData();
   formData.append("file", audioBlob, "recording.webm");
 
-  const res = await fetch(`${BASE}/projects/${projectId}/stt`, {
+  const res = await fetch(`${BASE}/projects/${projectId}/stt/transcribe`, {
     method: "POST",
     body: formData,
   });
@@ -99,5 +99,38 @@ export async function sendStt(projectId, audioBlob) {
 export async function fetchResources(projectId) {
   const res = await fetch(`${BASE}/projects/${projectId}/resources`);
   if (!res.ok) return [];
+  return res.json();
+}
+
+// ---- Projects ----
+
+export async function fetchProjects() {
+  const res = await fetch(`${BASE}/projects`);
+  if (!res.ok) throw new Error(`Failed to fetch projects: HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function createProject(data) {
+  const res = await fetch(`${BASE}/projects`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(`Failed to create project: HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function deleteProject(id) {
+  const res = await fetch(`${BASE}/projects/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`Failed to delete project: HTTP ${res.status}`);
+}
+
+export async function updateProject(id, data) {
+  const res = await fetch(`${BASE}/projects/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(`Failed to update project: HTTP ${res.status}`);
   return res.json();
 }

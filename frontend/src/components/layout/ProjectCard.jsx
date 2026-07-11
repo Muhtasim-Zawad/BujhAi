@@ -10,18 +10,18 @@ import {
 } from "@/components/ui/card";
 
 export function ProjectCard({
-	title = "Design systems meetup",
-	description = "A practical talk on component APIs, accessibility, and shipping faster.",
-	image = "https://avatar.vercel.sh/shadcn1",
-	badge = "Featured",
-	buttonText = "View Event",
+	title,
+	description,
+	image,
+	badge,
+	buttonText = "Open Project",
 	onAction,
 }) {
 	return (
 		<Card className="relative mx-auto w-full max-w-sm pt-0">
 			<div className="absolute inset-0 z-30 aspect-video bg-black/35" />
 			<img
-				src={image}
+				src={image || `https://avatar.vercel.sh/${encodeURIComponent(title)}`}
 				alt={title}
 				className="relative z-20 aspect-video w-full object-cover brightness-60 grayscale dark:brightness-40"
 			/>

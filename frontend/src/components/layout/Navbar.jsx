@@ -16,25 +16,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { User, Settings, LogOut, BookOpen, Palette } from "lucide-react";
 
-const projects = [
-	{
-		title: "Protege AI",
-		href: "#",
-		description: "AI-powered learning assistant",
-	},
-	{
-		title: "Design Canvas",
-		href: "#",
-		description: "Visual brainstorming tool",
-	},
-	{
-		title: "Data Explorer",
-		href: "#",
-		description: "Interactive data insights",
-	},
-];
-
-export default function Navbar({ onCreateProject }) {
+export default function Navbar({ projects = [], onCreateProject, onOpenProject }) {
 	return (
 		<div className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-sm">
 			<div className="mx-auto max-w-6xl p-6">
@@ -61,11 +43,15 @@ export default function Navbar({ onCreateProject }) {
 								</NavigationMenuTrigger>
 								<NavigationMenuContent className="border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] data-open:fade-in-100 data-open:zoom-in-100 data-closed:fade-out-100 data-closed:zoom-out-100">
 									<ul className="grid w-72 gap-1 p-2">
-										{projects.map((project) => (
-											<li key={project.title}>
-												<NavigationMenuLink
-													href={project.href}
-													className="flex flex-col items-start gap-0.5 rounded-sm p-2 transition-colors hover:bg-primary-hover focus:bg-primary-hover data-active:bg-primary-hover"
+										{projects.length === 0 ? (
+											<li className="px-2 py-4 text-center text-sm text-muted-foreground">
+												No projects yet
+											</li>
+										) : projects.map((project) => (
+											<li key={project.id}>
+												<button
+													onClick={() => onOpenProject?.(project)}
+													className="flex w-full flex-col items-start gap-0.5 rounded-sm p-2 text-left transition-colors hover:bg-primary-hover focus:bg-primary-hover data-active:bg-primary-hover cursor-pointer"
 												>
 													<span className="text-sm font-medium">
 														{project.title}
@@ -73,7 +59,7 @@ export default function Navbar({ onCreateProject }) {
 													<span className="text-xs text-muted-foreground">
 														{project.description}
 													</span>
-												</NavigationMenuLink>
+												</button>
 											</li>
 										))}
 									</ul>

@@ -27,78 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Plus, Trash2, FolderOpen, BookOpen, BarChart3 } from "lucide-react";
 
-let uidCounter = 0;
-function uid() {
-	return `project-${++uidCounter}`;
-}
-
-export const initialProjects = [
-	{
-		title: "Protege AI",
-		description: "AI-powered learning assistant that adapts to your pace.",
-		image: "https://avatar.vercel.sh/protege",
-		badge: "Active",
-		buttonText: "Open Project",
-		modules: [
-			{
-				title: "Machine Learning Basics",
-				resources: [
-					"Comprehensive guide covering supervised and unsupervised learning algorithms with practical examples.",
-					"Video walkthrough of building your first ML model from scratch.",
-				],
-				stats: { score: 88, completion: 90, accuracy: 85 },
-			},
-			{
-				title: "Neural Networks",
-				resources: [
-					"Detailed overview of neural network architectures including CNNs and RNNs.",
-					"Interactive notebook for experimenting with network hyperparameters.",
-				],
-				stats: { score: 82, completion: 85, accuracy: 80 },
-			},
-		],
-	},
-	{
-		title: "Design Canvas",
-		description: "Visual brainstorming tool for creative ideation.",
-		image: "https://avatar.vercel.sh/canvas",
-		badge: "Draft",
-		buttonText: "Open Project",
-		modules: [
-			{
-				title: "UI/UX Principles",
-				resources: [
-					"Fundamentals of user interface design including layout, typography, and color theory.",
-				],
-				stats: { score: 75, completion: 70, accuracy: 78 },
-			},
-		],
-	},
-	{
-		title: "Data Explorer",
-		description: "Interactive data insights and visualization dashboard.",
-		image: "https://avatar.vercel.sh/data",
-		badge: "Archived",
-		buttonText: "Open Project",
-		modules: [
-			{
-				title: "Data Analysis",
-				resources: [
-					"Guide to exploratory data analysis using Python and popular libraries.",
-					"Case study on real-world data cleaning and preprocessing techniques.",
-				],
-				stats: { score: 91, completion: 95, accuracy: 93 },
-			},
-			{
-				title: "Visualization",
-				resources: [
-					"Overview of data visualization best practices and chart selection.",
-				],
-				stats: { score: 87, completion: 90, accuracy: 86 },
-			},
-		],
-	},
-];
+import { Skeleton } from "@/components/ui/skeleton";
 
 const sections = [
 	{ value: "projects", label: "Projects" },
@@ -108,6 +37,7 @@ const sections = [
 
 export default function Dashboard({
 	projects,
+	loading,
 	onCreateProject,
 	onDeleteProject,
 	onOpenProject,
@@ -122,23 +52,23 @@ export default function Dashboard({
 		onCreateProject?.({
 			title: newProject.title,
 			description: newProject.description,
-			image: `https://avatar.vercel.sh/${uid()}`,
-			badge: "New",
-			buttonText: "Open Project",
-			modules: [],
 		});
 		setNewProject({ title: "", description: "" });
 		setIsCreateOpen(false);
 	}
 
-	function deleteProject(title) {
-		onDeleteProject?.(title);
+	function deleteProject(project) {
+		onDeleteProject?.(project.id);
 		setDeletingProject(null);
 	}
 
 	return (
 		<div>
-			<Navbar onCreateProject={() => setIsCreateOpen(true)} />
+			<Navbar
+				projects={projects}
+				onCreateProject={() => setIsCreateOpen(true)}
+				onOpenProject={onOpenProject}
+			/>
 			<div className="mx-auto max-w-6xl px-6 py-12">
 				<div className="mb-10">
 					<h1 className="font-head text-4xl tracking-tight sm:text-5xl">
@@ -177,7 +107,17 @@ export default function Dashboard({
 								Create Project
 							</Button>
 						</div>
-						{projects.length === 0 ? (
+						{loading ? (
+							<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+								{[1, 2, 3].map((i) => (
+									<div key={i} className="flex flex-col gap-3 rounded-xl border-2 border-black bg-card p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+										<Skeleton className="aspect-video w-full rounded-lg bg-muted" />
+										<Skeleton className="h-5 w-2/3 rounded bg-muted" />
+										<Skeleton className="h-4 w-full rounded bg-muted" />
+									</div>
+								))}
+							</div>
+						) : projects.length === 0 ? (
 							<div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
 								<FolderOpen className="size-12 text-muted-foreground" />
 								<p className="text-lg font-medium text-muted-foreground">
@@ -194,10 +134,10 @@ export default function Dashboard({
 						) : (
 							<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
 								{projects.map((project) => (
-									<div key={project.title} className="group relative">
+									<div key={project.id} className="group relative">
 										<ProjectCard {...project} onAction={() => onOpenProject?.(project)} />
 										<button
-											onClick={() => setDeletingProject(project.title)}
+											onClick={() => setDeletingProject(project)}
 											className="absolute top-2 right-2 z-40 cursor-pointer rounded-sm bg-destructive p-1.5 text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
 											title="Delete project"
 										>
@@ -385,7 +325,7 @@ export default function Dashboard({
 							<DialogDescription>
 								Are you sure you want to delete{" "}
 								<span className="font-medium text-foreground">
-									{deletingProject}
+									{deletingProject.title}
 								</span>
 								? This action cannot be undone.
 							</DialogDescription>
