@@ -36,7 +36,8 @@ const projects = [
 
 export default function Navbar({ onCreateProject }) {
 	return (
-		<div className="w-full p-6 mx-auto max-w-6xl">
+		<div className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-sm">
+			<div className="mx-auto max-w-6xl p-6">
 			<nav className="flex items-center justify-between bg-white border-2 border-black rounded-xl px-6 py-3 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
 				{/* Logo */}
 				<div className="flex items-center gap-2">
@@ -157,6 +158,7 @@ export default function Navbar({ onCreateProject }) {
 					</HoverCard>
 				</div>
 			</nav>
+			</div>
 		</div>
 	);
 }

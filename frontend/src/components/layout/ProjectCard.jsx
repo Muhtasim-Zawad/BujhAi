@@ -15,6 +15,7 @@ export function ProjectCard({
 	image = "https://avatar.vercel.sh/shadcn1",
 	badge = "Featured",
 	buttonText = "View Event",
+	onAction,
 }) {
 	return (
 		<Card className="relative mx-auto w-full max-w-sm pt-0">
@@ -32,7 +33,7 @@ export function ProjectCard({
 				<CardDescription>{description}</CardDescription>
 			</CardHeader>
 			<CardFooter>
-				<Button className="w-full">{buttonText}</Button>
+				<Button className="w-full" onClick={onAction}>{buttonText}</Button>
 			</CardFooter>
 		</Card>
 	);

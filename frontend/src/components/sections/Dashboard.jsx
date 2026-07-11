@@ -25,14 +25,14 @@ import {
 	DialogClose,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, FolderOpen, BookOpen, BarChart3 } from "lucide-react";
 
 let uidCounter = 0;
 function uid() {
 	return `project-${++uidCounter}`;
 }
 
-const initialProjects = [
+export const initialProjects = [
 	{
 		title: "Protege AI",
 		description: "AI-powered learning assistant that adapts to your pace.",
@@ -106,32 +106,33 @@ const sections = [
 	{ value: "stats", label: "Stats" },
 ];
 
-export default function Dashboard() {
+export default function Dashboard({
+	projects,
+	onCreateProject,
+	onDeleteProject,
+	onOpenProject,
+}) {
 	const [section, setSection] = useState("projects");
-	const [projects, setProjects] = useState(initialProjects);
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [newProject, setNewProject] = useState({ title: "", description: "" });
 	const [deletingProject, setDeletingProject] = useState(null);
 
 	function createProject() {
 		if (!newProject.title.trim()) return;
-		setProjects((prev) => [
-			...prev,
-			{
-				title: newProject.title,
-				description: newProject.description,
-				image: `https://avatar.vercel.sh/${uid()}`,
-				badge: "New",
-				buttonText: "Open Project",
-				modules: [],
-			},
-		]);
+		onCreateProject?.({
+			title: newProject.title,
+			description: newProject.description,
+			image: `https://avatar.vercel.sh/${uid()}`,
+			badge: "New",
+			buttonText: "Open Project",
+			modules: [],
+		});
 		setNewProject({ title: "", description: "" });
 		setIsCreateOpen(false);
 	}
 
 	function deleteProject(title) {
-		setProjects((prev) => prev.filter((p) => p.title !== title));
+		onDeleteProject?.(title);
 		setDeletingProject(null);
 	}
 
@@ -176,118 +177,158 @@ export default function Dashboard() {
 								Create Project
 							</Button>
 						</div>
-						<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-							{projects.map((project) => (
-								<div key={project.title} className="group relative">
-									<ProjectCard {...project} />
-									<button
-										onClick={() => setDeletingProject(project.title)}
-										className="absolute top-2 right-2 z-40 cursor-pointer rounded-sm bg-destructive p-1.5 text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
-										title="Delete project"
-									>
-										<Trash2 className="size-4" />
-									</button>
-								</div>
-							))}
-						</div>
+						{projects.length === 0 ? (
+							<div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+								<FolderOpen className="size-12 text-muted-foreground" />
+								<p className="text-lg font-medium text-muted-foreground">
+									No projects yet
+								</p>
+								<p className="text-sm text-muted-foreground">
+									Create your first project to get started.
+								</p>
+								<Button onClick={() => setIsCreateOpen(true)}>
+									<Plus className="size-4" />
+									Create Project
+								</Button>
+							</div>
+						) : (
+							<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+								{projects.map((project) => (
+									<div key={project.title} className="group relative">
+										<ProjectCard {...project} onAction={() => onOpenProject?.(project)} />
+										<button
+											onClick={() => setDeletingProject(project.title)}
+											className="absolute top-2 right-2 z-40 cursor-pointer rounded-sm bg-destructive p-1.5 text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
+											title="Delete project"
+										>
+											<Trash2 className="size-4" />
+										</button>
+									</div>
+								))}
+							</div>
+						)}
 					</div>
 				)}
 
 				{/* Resources */}
 				{section === "resources" && (
 					<div className="flex flex-col gap-4">
-						{projects.map((project) => (
-							<Accordion key={project.title}>
-								<AccordionItem>
-									<AccordionTrigger>
-										{project.title}
-									</AccordionTrigger>
-									<AccordionContent>
-										<div className="flex flex-col gap-3">
-											{project.modules.map((mod) => (
-												<Accordion key={mod.title}>
-													<AccordionItem>
-														<AccordionTrigger className="text-sm">
-															{mod.title}
-														</AccordionTrigger>
-														<AccordionContent>
-															<div className="flex flex-col gap-2">
-																{mod.resources.map(
-																	(r, i) => (
-																		<p
-																			key={i}
-																			className="text-sm text-muted-foreground"
-																		>
-																			{r}
-																		</p>
-																	)
-																)}
-															</div>
-														</AccordionContent>
-													</AccordionItem>
-												</Accordion>
-											))}
-										</div>
-									</AccordionContent>
-								</AccordionItem>
-							</Accordion>
-						))}
+						{projects.length === 0 ? (
+							<div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+								<BookOpen className="size-12 text-muted-foreground" />
+								<p className="text-lg font-medium text-muted-foreground">
+									No resources available
+								</p>
+								<p className="text-sm text-muted-foreground">
+									Create a project and add resources to see them here.
+								</p>
+							</div>
+						) : (
+							projects.map((project) => (
+								<Accordion key={project.title}>
+									<AccordionItem>
+										<AccordionTrigger>
+											{project.title}
+										</AccordionTrigger>
+										<AccordionContent>
+											<div className="flex flex-col gap-3">
+												{project.modules.map((mod) => (
+													<Accordion key={mod.title}>
+														<AccordionItem>
+															<AccordionTrigger className="text-sm">
+																{mod.title}
+															</AccordionTrigger>
+															<AccordionContent>
+																<div className="flex flex-col gap-2">
+																	{mod.resources.map(
+																		(r, i) => (
+																			<p
+																				key={i}
+																				className="text-sm text-muted-foreground"
+																			>
+																				{r}
+																			</p>
+																		)
+																	)}
+																</div>
+															</AccordionContent>
+														</AccordionItem>
+													</Accordion>
+												))}
+											</div>
+										</AccordionContent>
+									</AccordionItem>
+								</Accordion>
+							))
+						)}
 					</div>
 				)}
 
 				{/* Stats */}
 				{section === "stats" && (
 					<div className="flex flex-col gap-4">
-						{projects.map((project) => (
-							<Accordion key={project.title}>
-								<AccordionItem>
-									<AccordionTrigger>
-										{project.title}
-									</AccordionTrigger>
-									<AccordionContent>
-										<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-											{project.modules.map((mod) => (
-												<Card key={mod.title}>
-													<CardHeader>
-														<CardTitle>
-															{mod.title}
-														</CardTitle>
-													</CardHeader>
-													<CardContent>
-														<div className="flex flex-col gap-2">
-															<div className="flex justify-between text-sm">
-																<span className="text-muted-foreground">
-																	Score
-																</span>
-																<span className="font-medium">
-																	{mod.stats.score}
-																</span>
+						{projects.length === 0 ? (
+							<div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+								<BarChart3 className="size-12 text-muted-foreground" />
+								<p className="text-lg font-medium text-muted-foreground">
+									No stats available
+								</p>
+								<p className="text-sm text-muted-foreground">
+									Start working on a project to track your progress.
+								</p>
+							</div>
+						) : (
+							projects.map((project) => (
+								<Accordion key={project.title}>
+									<AccordionItem>
+										<AccordionTrigger>
+											{project.title}
+										</AccordionTrigger>
+										<AccordionContent>
+											<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+												{project.modules.map((mod) => (
+													<Card key={mod.title}>
+														<CardHeader>
+															<CardTitle>
+																{mod.title}
+															</CardTitle>
+														</CardHeader>
+														<CardContent>
+															<div className="flex flex-col gap-2">
+																<div className="flex justify-between text-sm">
+																	<span className="text-muted-foreground">
+																		Score
+																	</span>
+																	<span className="font-medium">
+																		{mod.stats.score}
+																	</span>
+																</div>
+																<div className="flex justify-between text-sm">
+																	<span className="text-muted-foreground">
+																		Completion
+																	</span>
+																	<span className="font-medium">
+																		{mod.stats.completion}%
+																	</span>
+																</div>
+																<div className="flex justify-between text-sm">
+																	<span className="text-muted-foreground">
+																		Accuracy
+																	</span>
+																	<span className="font-medium">
+																		{mod.stats.accuracy}%
+																	</span>
+																</div>
 															</div>
-															<div className="flex justify-between text-sm">
-																<span className="text-muted-foreground">
-																	Completion
-																</span>
-																<span className="font-medium">
-																	{mod.stats.completion}%
-																</span>
-															</div>
-															<div className="flex justify-between text-sm">
-																<span className="text-muted-foreground">
-																	Accuracy
-																</span>
-																<span className="font-medium">
-																	{mod.stats.accuracy}%
-																</span>
-															</div>
-														</div>
-													</CardContent>
-												</Card>
-											))}
-										</div>
-									</AccordionContent>
-								</AccordionItem>
-							</Accordion>
-						))}
+														</CardContent>
+													</Card>
+												))}
+											</div>
+										</AccordionContent>
+									</AccordionItem>
+								</Accordion>
+							))
+						)}
 					</div>
 				)}
 

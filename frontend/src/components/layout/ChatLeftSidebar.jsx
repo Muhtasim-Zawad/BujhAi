@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export default function ChatLeftSidebar({ activeSection: activeSectionProp, onSectionChange }) {
+export default function ChatLeftSidebar({ activeSection: activeSectionProp, onSectionChange, onBack }) {
 	const [isCollapsed, setIsCollapsed] = useState(false);
 	const [internalActiveSection, setInternalActiveSection] = useState("materials");
 
@@ -27,9 +27,10 @@ export default function ChatLeftSidebar({ activeSection: activeSectionProp, onSe
 		>
 			{/* Section 1: Logo + collapse toggle */}
 			<div className="flex items-center px-4 py-4">
-				<div
+				<button
+					onClick={onBack}
 					className={cn(
-						"flex items-center gap-2 transition-all duration-300 overflow-hidden",
+						"flex items-center gap-2 transition-all duration-300 overflow-hidden cursor-pointer",
 						isCollapsed
 							? "opacity-0 scale-95 max-w-0"
 							: "opacity-100 scale-100 max-w-full"
@@ -41,7 +42,7 @@ export default function ChatLeftSidebar({ activeSection: activeSectionProp, onSe
 					<span className="font-extrabold text-xl tracking-tight whitespace-nowrap">
 						BujhAI
 					</span>
-				</div>
+				</button>
 				<button
 					onClick={() => setIsCollapsed(!isCollapsed)}
 					className={cn(

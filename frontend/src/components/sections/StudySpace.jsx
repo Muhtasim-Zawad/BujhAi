@@ -5,7 +5,7 @@ import ChatRightSidebar from "@/components/layout/ChatRightSidebar";
 import Materials from "@/components/layout/Materials";
 import Stats from "@/components/layout/Stats";
 
-export default function StudySpace() {
+export default function StudySpace({ project, onBack }) {
 	const [activeSection, setActiveSection] = useState("materials");
 
 	return (
@@ -13,6 +13,7 @@ export default function StudySpace() {
 			<ChatLeftSidebar
 				activeSection={activeSection}
 				onSectionChange={setActiveSection}
+				onBack={onBack}
 			/>
 
 			{activeSection === "materials" && (
