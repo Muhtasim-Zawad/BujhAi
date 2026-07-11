@@ -222,3 +222,73 @@ export async function deleteRubricPoint(projectId, rubricId, pointId) {
   });
   if (!res.ok) throw new Error(`Delete point failed: HTTP ${res.status}`);
 }
+
+// ---- Modules ----
+
+export async function fetchModules(projectId) {
+  const res = await fetch(`${BASE}/projects/${projectId}/modules`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function createModule(projectId, title) {
+  const res = await fetch(`${BASE}/projects/${projectId}/modules`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title }),
+  });
+  if (!res.ok) throw new Error(`Create module failed: HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function updateModule(projectId, moduleId, title) {
+  const res = await fetch(`${BASE}/projects/${projectId}/modules/${moduleId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title }),
+  });
+  if (!res.ok) throw new Error(`Update module failed: HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function deleteModule(projectId, moduleId) {
+  const res = await fetch(`${BASE}/projects/${projectId}/modules/${moduleId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error(`Delete module failed: HTTP ${res.status}`);
+}
+
+export async function createModulePoint(projectId, moduleId, text) {
+  const res = await fetch(`${BASE}/projects/${projectId}/modules/${moduleId}/points`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  if (!res.ok) throw new Error(`Create point failed: HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function updateModulePoint(projectId, moduleId, pointId, data) {
+  const res = await fetch(`${BASE}/projects/${projectId}/modules/${moduleId}/points/${pointId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(`Update point failed: HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function deleteModulePoint(projectId, moduleId, pointId) {
+  const res = await fetch(`${BASE}/projects/${projectId}/modules/${moduleId}/points/${pointId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error(`Delete point failed: HTTP ${res.status}`);
+}
+
+// ---- Stats ----
+
+export async function fetchStats(projectId) {
+  const res = await fetch(`${BASE}/projects/${projectId}/stats`);
+  if (!res.ok) throw new Error(`Failed to fetch stats: HTTP ${res.status}`);
+  return res.json();
+}

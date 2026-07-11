@@ -33,7 +33,7 @@ export default function StudySpace({ project, onBack }) {
 
 			{activeSection === "stats" && (
 				<div className="flex-1 overflow-hidden rounded-xl border-2 border-black bg-card shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-					<Stats />
+					<Stats projectId={project.id || project.title} />
 				</div>
 			)}
 		</div>

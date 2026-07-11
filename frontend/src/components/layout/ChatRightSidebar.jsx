@@ -15,15 +15,36 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import {
+	fetchModules,
+	createModule,
+	updateModule,
+	deleteModule,
+	createModulePoint,
+	updateModulePoint,
+	deleteModulePoint,
+} from "@/utils/api";
 
-let idCounter = 0;
-function uid() {
-	return `id-${++idCounter}`;
-}
-
-export default function ChatRightSidebar() {
+export default function ChatRightSidebar({ projectId }) {
 	const [isCollapsed, setIsCollapsed] = useState(false);
+	const [modules, setModules] = useState([]);
+	const [editingModuleId, setEditingModuleId] = useState(null);
+	const [editingTitle, setEditingTitle] = useState("");
 	const [rubricProgress, setRubricProgress] = useState({ checked: 0, total: 0 });
+
+	useEffect(() => {
+		if (!projectId) return;
+		fetchModules(projectId).then(setModules).catch(() => {});
+	}, [projectId]);
+
+	useEffect(() => {
+		const handler = () => {
+			if (!projectId) return;
+			fetchModules(projectId).then(setModules).catch(() => {});
+		};
+		window.addEventListener("modules-generated", handler);
+		return () => window.removeEventListener("modules-generated", handler);
+	}, [projectId]);
 
 	useEffect(() => {
 		const handler = (e) => {
@@ -35,48 +56,40 @@ export default function ChatRightSidebar() {
 		return () => window.removeEventListener("rubric-update", handler);
 	}, []);
 
-	const [modules, setModules] = useState([
-		{
-			id: uid(),
-			title: "Module 1",
-			points: [
-				{ id: uid(), text: "Introduction", checked: false },
-				{ id: uid(), text: "Core concepts", checked: false },
-			],
-		},
-	]);
-	const [editingModuleId, setEditingModuleId] = useState(null);
-	const [editingTitle, setEditingTitle] = useState("");
-
-	const totalPoints = modules.reduce((sum, m) => sum + m.points.length, 0);
+	const totalPoints = modules.reduce((sum, m) => sum + (m.points?.length || 0), 0);
 	const checkedPoints = modules.reduce(
-		(sum, m) => sum + m.points.filter((p) => p.checked).length,
+		(sum, m) => sum + (m.points || []).filter((p) => p.checked).length,
 		0,
 	);
-	const globalProgress =
-		totalPoints > 0 ? Math.round((checkedPoints / totalPoints) * 100) : 0;
+	const globalProgress = totalPoints > 0 ? Math.round((checkedPoints / totalPoints) * 100) : 0;
 
-	function addModule() {
-		setModules((prev) => [
-			...prev,
-			{
-				id: uid(),
-				title: `Module ${prev.length + 1}`,
-				points: [{ id: uid(), text: "New point", checked: false }],
-			},
-		]);
+	async function addModule() {
+		try {
+			const created = await createModule(projectId, `Module ${modules.length + 1}`);
+			setModules((prev) => [...prev, created]);
+		} catch (err) {
+			console.error("Create module failed:", err);
+		}
 	}
 
-	function deleteModule(id) {
-		setModules((prev) => prev.filter((m) => m.id !== id));
+	async function deleteModuleLocal(id) {
+		try {
+			await deleteModule(projectId, id);
+			setModules((prev) => prev.filter((m) => m.id !== id));
+		} catch (err) {
+			console.error("Delete module failed:", err);
+		}
 	}
 
-	function renameModule(id) {
-		setModules((prev) =>
-			prev.map((m) => (m.id === id ? { ...m, title: editingTitle } : m)),
-		);
-		setEditingModuleId(null);
-		setEditingTitle("");
+	async function renameModule(id) {
+		try {
+			const updated = await updateModule(projectId, id, editingTitle);
+			setModules((prev) => prev.map((m) => (m.id === id ? updated : m)));
+			setEditingModuleId(null);
+			setEditingTitle("");
+		} catch (err) {
+			console.error("Rename module failed:", err);
+		}
 	}
 
 	function startEditing(module) {
@@ -84,71 +97,85 @@ export default function ChatRightSidebar() {
 		setEditingTitle(module.title);
 	}
 
-	function addPoint(moduleId) {
-		setModules((prev) =>
-			prev.map((m) =>
-				m.id === moduleId
-					? {
-							...m,
-							points: [
-								...m.points,
-								{ id: uid(), text: "New point", checked: false },
-							],
-						}
-					: m,
-			),
-		);
+	async function addPoint(moduleId) {
+		try {
+			const created = await createModulePoint(projectId, moduleId, "New point");
+			setModules((prev) =>
+				prev.map((m) =>
+					m.id === moduleId
+						? { ...m, points: [...(m.points || []), created] }
+						: m,
+				),
+			);
+		} catch (err) {
+			console.error("Add point failed:", err);
+		}
 	}
 
-	function deletePoint(moduleId, pointId) {
-		setModules((prev) =>
-			prev.map((m) =>
-				m.id === moduleId
-					? {
-							...m,
-							points: m.points.filter((p) => p.id !== pointId),
-						}
-					: m,
-			),
-		);
+	async function deletePointLocal(moduleId, pointId) {
+		try {
+			await deleteModulePoint(projectId, moduleId, pointId);
+			setModules((prev) =>
+				prev.map((m) =>
+					m.id === moduleId
+						? { ...m, points: (m.points || []).filter((p) => p.id !== pointId) }
+						: m,
+				),
+			);
+		} catch (err) {
+			console.error("Delete point failed:", err);
+		}
 	}
 
-	function togglePoint(moduleId, pointId) {
-		setModules((prev) =>
-			prev.map((m) =>
-				m.id === moduleId
-					? {
-							...m,
-							points: m.points.map((p) =>
-								p.id === pointId ? { ...p, checked: !p.checked } : p,
-							),
-						}
-					: m,
-			),
-		);
+	async function togglePoint(moduleId, pointId) {
+		const mod = modules.find((m) => m.id === moduleId);
+		const point = mod?.points?.find((p) => p.id === pointId);
+		if (!point) return;
+		try {
+			const updated = await updateModulePoint(projectId, moduleId, pointId, {
+				checked: !point.checked,
+			});
+			setModules((prev) =>
+				prev.map((m) =>
+					m.id === moduleId
+						? {
+								...m,
+								points: (m.points || []).map((p) =>
+									p.id === pointId ? updated : p,
+								),
+							}
+						: m,
+				),
+			);
+		} catch (err) {
+			console.error("Toggle point failed:", err);
+		}
 	}
 
-	function updatePointText(moduleId, pointId, text) {
-		setModules((prev) =>
-			prev.map((m) =>
-				m.id === moduleId
-					? {
-							...m,
-							points: m.points.map((p) =>
-								p.id === pointId ? { ...p, text } : p,
-							),
-						}
-					: m,
-			),
-		);
+	async function updatePointText(moduleId, pointId, text) {
+		try {
+			const updated = await updateModulePoint(projectId, moduleId, pointId, { text });
+			setModules((prev) =>
+				prev.map((m) =>
+					m.id === moduleId
+						? {
+								...m,
+								points: (m.points || []).map((p) =>
+									p.id === pointId ? updated : p,
+								),
+							}
+						: m,
+				),
+			);
+		} catch (err) {
+			console.error("Update point failed:", err);
+		}
 	}
 
 	function getModuleProgress(module) {
-		if (module.points.length === 0) return 0;
-		return Math.round(
-			(module.points.filter((p) => p.checked).length / module.points.length) *
-				100,
-		);
+		const pts = module.points || [];
+		if (pts.length === 0) return 0;
+		return Math.round((pts.filter((p) => p.checked).length / pts.length) * 100);
 	}
 
 	return (
@@ -158,7 +185,6 @@ export default function ChatRightSidebar() {
 				isCollapsed ? "w-16" : "w-72",
 			)}
 		>
-			{/* Section 1: Title + collapse toggle */}
 			<div className="flex items-center px-4 py-4">
 				<button
 					onClick={() => setIsCollapsed(!isCollapsed)}
@@ -182,31 +208,24 @@ export default function ChatRightSidebar() {
 							: "opacity-100 scale-100 max-w-full ml-2",
 					)}
 				>
-					<span className="font-extrabold text-lg tracking-tight">
-						Course Progress
-					</span>
+					<span className="font-extrabold text-lg tracking-tight">Course Progress</span>
 				</div>
 			</div>
 
 			<Separator className="mx-3 w-[calc(100%-24px)]" />
 
-			{/* Section 2: Content */}
 			{!isCollapsed && (
 				<div className="flex flex-col gap-4 p-3 overflow-y-auto flex-1">
-					{/* Global progress */}
 					<Progress value={globalProgress}>
 						<ProgressLabel>Overall Progress</ProgressLabel>
 						<ProgressValue>{globalProgress}%</ProgressValue>
 					</Progress>
 
-					{/* Rubric progress */}
 					{rubricProgress.total > 0 && (
 						<div className="flex items-center gap-2 rounded-lg border border-black/20 bg-purple-50 px-3 py-2">
 							<CheckCircle2 className="size-4 text-purple-600" />
 							<div className="flex flex-1 items-center justify-between text-xs">
-								<span className="font-medium text-purple-700">
-									Rubric Criteria
-								</span>
+								<span className="font-medium text-purple-700">Rubric Criteria</span>
 								<span className="text-purple-600">
 									{rubricProgress.checked}/{rubricProgress.total}
 								</span>
@@ -214,14 +233,12 @@ export default function ChatRightSidebar() {
 						</div>
 					)}
 
-					{/* Modules */}
 					{modules.length > 0 ? (
 						<div className="flex flex-col gap-2">
 							{modules.map((module) => {
 								const progress = getModuleProgress(module);
-								const checkedCount = module.points.filter(
-									(p) => p.checked,
-								).length;
+								const pts = module.points || [];
+								const checkedCount = pts.filter((p) => p.checked).length;
 								return (
 									<Accordion key={module.id}>
 										<AccordionItem>
@@ -239,9 +256,7 @@ export default function ChatRightSidebar() {
 														onClick={(e) => e.stopPropagation()}
 													/>
 												) : (
-													<span className="text-sm font-head">
-														{module.title}
-													</span>
+													<span className="text-sm font-head">{module.title}</span>
 												)}
 												<div
 													className="flex items-center gap-1"
@@ -254,7 +269,7 @@ export default function ChatRightSidebar() {
 														<Edit3 className="size-3.5" />
 													</button>
 													<button
-														onClick={() => deleteModule(module.id)}
+														onClick={() => deleteModuleLocal(module.id)}
 														className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-destructive cursor-pointer"
 													>
 														<Trash2 className="size-3.5" />
@@ -263,51 +278,36 @@ export default function ChatRightSidebar() {
 											</AccordionTrigger>
 											<AccordionContent>
 												<div className="flex flex-col gap-3">
-													{/* Module progress bar */}
 													<div className="relative h-2 w-full overflow-hidden rounded border border-black bg-background">
 														<div
 															className="h-full bg-primary transition-all duration-300"
-															style={{
-																width: `${progress}%`,
-															}}
+															style={{ width: `${progress}%` }}
 														/>
 													</div>
 													<div className="flex justify-between text-xs text-muted-foreground">
 														<span>
-															{checkedCount}/{module.points.length} completed
+															{checkedCount}/{pts.length} completed
 														</span>
 														<span>{progress}%</span>
 													</div>
 
-													{/* Points */}
 													<div className="flex flex-col gap-1.5">
-														{module.points.map((point) => (
-															<div
-																key={point.id}
-																className="flex items-center gap-2 group/point"
-															>
+														{pts.map((point) => (
+															<div key={point.id} className="flex items-center gap-2 group/point">
 																<Checkbox
 																	checked={point.checked}
-																	onCheckedChange={() =>
-																		togglePoint(module.id, point.id)
-																	}
+																	onCheckedChange={() => togglePoint(module.id, point.id)}
 																	className="size-4 shrink-0"
 																/>
 																<input
 																	value={point.text}
 																	onChange={(e) =>
-																		updatePointText(
-																			module.id,
-																			point.id,
-																			e.target.value,
-																		)
+																		updatePointText(module.id, point.id, e.target.value)
 																	}
 																	className="flex-1 bg-transparent text-sm outline-none border-b border-transparent focus:border-black transition-colors"
 																/>
 																<button
-																	onClick={() =>
-																		deletePoint(module.id, point.id)
-																	}
+																	onClick={() => deletePointLocal(module.id, point.id)}
 																	className="opacity-0 group-hover/point:opacity-100 transition-opacity text-destructive p-0.5 cursor-pointer"
 																>
 																	<Trash2 className="size-3" />
@@ -316,7 +316,6 @@ export default function ChatRightSidebar() {
 														))}
 													</div>
 
-													{/* Add point */}
 													<button
 														onClick={() => addPoint(module.id)}
 														className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
@@ -332,12 +331,9 @@ export default function ChatRightSidebar() {
 							})}
 						</div>
 					) : (
-						<p className="text-sm text-muted-foreground text-center py-4">
-							No modules yet
-						</p>
+						<p className="text-sm text-muted-foreground text-center py-4">No modules yet</p>
 					)}
 
-					{/* Add Module button */}
 					<Button
 						onClick={addModule}
 						variant="outline"
