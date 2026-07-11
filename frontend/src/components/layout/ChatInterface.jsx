@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import Canvas from "@/components/layout/Canvas";
 import {
 	Send,
 	Paperclip,
@@ -13,6 +14,8 @@ import {
 	User,
 	StopCircle,
 	Sparkles,
+	MessageSquare,
+	Pencil,
 } from "lucide-react";
 
 const initialMessages = [
@@ -29,6 +32,7 @@ export default function ChatInterface() {
 	const [input, setInput] = useState("");
 	const [isRecording, setIsRecording] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
+	const [showCanvas, setShowCanvas] = useState(false);
 	const messagesEndRef = useRef(null);
 	const textareaRef = useRef(null);
 
@@ -75,7 +79,32 @@ export default function ChatInterface() {
 
 	return (
 		<div className="flex h-full flex-col bg-background">
-			<div className="flex-1 overflow-y-auto px-4 py-6">
+			<div className="flex items-center justify-end border-b-2 border-black bg-card px-4 py-2">
+				<button
+					onClick={() => setShowCanvas((v) => !v)}
+					className="flex cursor-pointer items-center gap-1.5 rounded-md border-2 border-black bg-background px-3 py-1.5 text-xs font-medium shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-y-0.5 active:translate-y-1 active:shadow-none"
+				>
+					{showCanvas ? (
+						<>
+							<MessageSquare className="size-4" />
+							Chat
+						</>
+					) : (
+						<>
+							<Pencil className="size-4" />
+							Canvas
+						</>
+					)}
+				</button>
+			</div>
+
+			{showCanvas ? (
+				<div className="flex-1 overflow-hidden">
+					<Canvas />
+				</div>
+			) : (
+				<>
+				<div className="flex-1 overflow-y-auto px-4 py-6">
 				<div className="mx-auto flex max-w-3xl flex-col gap-4">
 					{messages.map((message) => (
 						<div
@@ -181,6 +210,8 @@ export default function ChatInterface() {
 					</div>
 				</form>
 			</div>
+			</>
+			)}
 		</div>
 	);
 }
