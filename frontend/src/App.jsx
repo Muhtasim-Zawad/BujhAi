@@ -9,17 +9,19 @@ import "@fontsource/space-grotesk/500.css";
 // import ChatLeftSidebar from "./components/layout/ChatLeftSidebar";
 // import ChatRightSidebar from "./components/layout/ChatRightSidebar";
 // import Materials from "./components/layout/Materials";
-import Stats from "./components/layout/Stats";
+// import Stats from "./components/layout/Stats";
+import StudySpace from "./components/sections/StudySpace";
 
 function App() {
 	return (
-		<div className="flex flex-col min-h-screen w-screen overflow-y-auto">
+		<div className="flex flex-col h-screen w-screen overflow-hidden">
 			{/* <Dashboard /> */}
 			{/* <ChatInterface /> */}
 			{/* <ChatLeftSidebar /> */}
 			{/* <ChatRightSidebar /> */}
 			{/* <Materials /> */}
-			<Stats />
+			{/* <Stats /> */}
+			<StudySpace />
 		</div>
 	);
 }

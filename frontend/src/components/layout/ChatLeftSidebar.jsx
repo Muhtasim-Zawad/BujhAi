@@ -6,15 +6,17 @@ import {
 	GraduationCap,
 	BarChart3,
 } from "lucide-react";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export default function ChatLeftSidebar() {
+export default function ChatLeftSidebar({ activeSection: activeSectionProp, onSectionChange }) {
 	const [isCollapsed, setIsCollapsed] = useState(false);
-	const [activeSection, setActiveSection] = useState("materials");
+	const [internalActiveSection, setInternalActiveSection] = useState("materials");
+
+	const activeSection = activeSectionProp ?? internalActiveSection;
+	const setActiveSection = onSectionChange ?? setInternalActiveSection;
 
 	return (
 		<div
@@ -82,35 +84,27 @@ export default function ChatLeftSidebar() {
 						))}
 					</div>
 				) : (
-					<ToggleGroup
-						value={activeSection}
-						onValueChange={setActiveSection}
-						orientation="vertical"
-						data-vertical=""
-						className="w-full"
-					>
-						<ToggleGroupItem
-							value="materials"
-							className="w-full justify-start gap-2 px-3"
-						>
-							<BookOpen className="size-4" />
-							Materials
-						</ToggleGroupItem>
-						<ToggleGroupItem
-							value="study"
-							className="w-full justify-start gap-2 px-3"
-						>
-							<GraduationCap className="size-4" />
-							Study
-						</ToggleGroupItem>
-						<ToggleGroupItem
-							value="stats"
-							className="w-full justify-start gap-2 px-3"
-						>
-							<BarChart3 className="size-4" />
-							Stats
-						</ToggleGroupItem>
-					</ToggleGroup>
+					<div className="flex flex-col gap-1">
+						{[
+							{ value: "materials", icon: BookOpen, label: "Materials" },
+							{ value: "study", icon: GraduationCap, label: "Study" },
+							{ value: "stats", icon: BarChart3, label: "Stats" },
+						].map(({ value, icon: Icon, label }) => (
+							<button
+								key={value}
+								onClick={() => setActiveSection(value)}
+								className={cn(
+									"flex items-center gap-2 px-3 py-1.5 rounded border-2 text-sm font-head font-medium whitespace-nowrap shadow-sm transition-all duration-200 cursor-pointer w-full justify-start",
+									activeSection === value
+										? "bg-primary text-primary-foreground border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+										: "bg-background border-black hover:bg-accent hover:translate-y-0.5 active:translate-y-1 active:shadow-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+								)}
+							>
+								<Icon className="size-4 shrink-0" />
+								{label}
+							</button>
+						))}
+					</div>
 				)}
 			</div>
 

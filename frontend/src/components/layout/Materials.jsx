@@ -29,6 +29,16 @@ import {
 	EmptyContent,
 	EmptyMedia,
 } from "@/components/ui/empty";
+import {
+	Dialog,
+	DialogTrigger,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogDescription,
+	DialogFooter,
+	DialogClose,
+} from "@/components/ui/dialog";
 
 let idCounter = 0;
 function uid() {
@@ -37,7 +47,7 @@ function uid() {
 
 export default function Materials() {
 	const [hasUploaded, setHasUploaded] = useState(false);
-	const [material, setMaterial] = useState(null);
+	const [materials, setMaterials] = useState([]);
 	const [rubrics, setRubrics] = useState([
 		{
 			id: uid(),
@@ -167,20 +177,29 @@ export default function Materials() {
 		);
 	}
 
+	function removeMaterial(id) {
+		setMaterials((prev) => prev.filter((m) => m.id !== id));
+	}
+
 	function handleUpload() {
 		fileInputRef.current?.click();
 	}
 
 	function handleFileChange(e) {
-		const file = e.target.files[0];
-		if (file) {
-			setMaterial({
-				name: file.name,
-				size: file.size,
-				type: file.type,
-			});
+		const files = Array.from(e.target.files);
+		if (files.length > 0) {
+			setMaterials((prev) => [
+				...prev,
+				...files.map((f) => ({
+					id: uid(),
+					name: f.name,
+					size: f.size,
+					type: f.type,
+				})),
+			]);
 			setHasUploaded(true);
 		}
+		e.target.value = "";
 	}
 
 	if (!hasUploaded) {
@@ -200,6 +219,7 @@ export default function Materials() {
 					<input
 						ref={fileInputRef}
 						type="file"
+						multiple
 						className="hidden"
 						onChange={handleFileChange}
 					/>
@@ -215,37 +235,99 @@ export default function Materials() {
 
 	return (
 		<div className="flex flex-col gap-4 p-4 h-full overflow-hidden">
-			{/* Section 1: Uploaded material */}
-			<div className="flex items-center gap-3 bg-card border-2 border-black rounded-xl p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-				<div className="flex items-center justify-center size-10 rounded-lg bg-muted border-2 border-black shrink-0">
-					<FileText className="size-5" />
+			{/* Section 1: Title + subtitle */}
+			<div className="flex flex-col gap-1">
+				<h1 className="font-head text-2xl tracking-tight">Materials</h1>
+				<p className="text-sm text-muted-foreground">
+					Manage your uploaded learning materials and rubrics.
+				</p>
+			</div>
+
+			{/* Section 2: Uploaded files */}
+			<div className="flex flex-col gap-2">
+				<div className="flex items-center justify-between">
+					<span className="text-sm font-medium text-muted-foreground">
+						{materials.length} file{materials.length !== 1 ? "s" : ""} uploaded
+					</span>
+					<input
+						ref={fileInputRef}
+						type="file"
+						multiple
+						className="hidden"
+						onChange={handleFileChange}
+					/>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={handleUpload}
+						className="border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+					>
+						<Upload className="size-4" />
+						Upload More
+					</Button>
 				</div>
-				<div className="flex-1 min-w-0">
-					<p className="text-sm font-medium truncate">
-						{material.name}
-					</p>
-					<p className="text-xs text-muted-foreground">
-						{(material.size / 1024).toFixed(1)} KB
-					</p>
+				<div className="flex flex-row flex-wrap gap-3">
+					{materials.map((m) => (
+						<div
+							key={m.id}
+							className="flex items-center gap-3 bg-card border-2 border-black rounded-xl p-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] min-w-0"
+						>
+							<div className="flex items-center justify-center size-8 rounded-lg bg-muted border-2 border-black shrink-0">
+								<FileText className="size-4" />
+							</div>
+							<div className="flex-1 min-w-0 max-w-40">
+								<p className="text-sm font-medium truncate">
+									{m.name}
+								</p>
+								<p className="text-xs text-muted-foreground">
+									{(m.size / 1024).toFixed(1)} KB
+								</p>
+							</div>
+							<Dialog>
+								<DialogTrigger asChild>
+									<button
+										className="flex items-center justify-center size-7 rounded-lg border-2 border-black bg-background text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors cursor-pointer shrink-0 shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
+									>
+										<Trash2 className="size-3.5" />
+									</button>
+								</DialogTrigger>
+								<DialogContent className="bg-card">
+									<DialogHeader>
+										<DialogTitle>Remove material</DialogTitle>
+										<DialogDescription>
+											Are you sure you want to remove{" "}
+											<span className="font-medium text-foreground">
+												{m.name}
+											</span>
+											? This action cannot be undone.
+										</DialogDescription>
+									</DialogHeader>
+									<DialogFooter>
+										<DialogClose asChild>
+											<Button variant="outline" size="sm">
+												Cancel
+											</Button>
+										</DialogClose>
+										<DialogClose asChild>
+											<Button
+												variant="destructive"
+												size="sm"
+												onClick={() => removeMaterial(m.id)}
+											>
+												Remove
+											</Button>
+										</DialogClose>
+									</DialogFooter>
+								</DialogContent>
+							</Dialog>
+						</div>
+					))}
 				</div>
-				<input
-					ref={fileInputRef}
-					type="file"
-					className="hidden"
-					onChange={handleFileChange}
-				/>
-				<Button
-					variant="outline"
-					size="sm"
-					onClick={handleUpload}
-				>
-					Replace
-				</Button>
 			</div>
 
 			<Separator />
 
-			{/* Section 2: Global progress + Rubrics */}
+			{/* Section 3: Global progress + Rubrics */}
 			<div className="flex-1 overflow-y-auto">
 				<Progress value={globalProgress} className="mb-4">
 					<ProgressLabel>Overall Progress</ProgressLabel>
