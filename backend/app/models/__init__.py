@@ -1,0 +1,17 @@
+from app.models.project import Project
+from app.models.module import Module, ModulePoint
+from app.models.material import Material
+from app.models.rubric import Rubric, RubricPoint
+from app.models.message import Message
+from app.models.canvas_scene import CanvasScene
+
+__all__ = [
+    "Project",
+    "Module",
+    "ModulePoint",
+    "Material",
+    "Rubric",
+    "RubricPoint",
+    "Message",
+    "CanvasScene",
+]
