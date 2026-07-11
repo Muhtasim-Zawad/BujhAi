@@ -13,6 +13,7 @@ class Project(Base):
     title: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str] = mapped_column(Text, default="")
     badge: Mapped[str] = mapped_column(String, default="New")
+    button_text: Mapped[str] = mapped_column(String, default="Open Project")
     image_url: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         server_default=func.datetime("now")
