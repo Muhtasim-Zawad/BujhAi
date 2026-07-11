@@ -4,11 +4,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.database import async_session, get_db
 from app.models.message import Message
+from app.models.module import Module
 from app.models.project import Project
+from app.models.rubric import Rubric, RubricPoint
 from app.schemas.chat import ChatRequest
 from app.services.agent import stream_chat_agent
 
@@ -55,14 +58,61 @@ async def chat_stream(
         if m.id != user_msg.id
     ]
 
+    mod_result = await db.execute(
+        select(Module)
+        .options(selectinload(Module.points))
+        .where(Module.project_id == project_id)
+        .order_by(Module.sort_order)
+    )
+    modules_data = [
+        {
+            "id": m.id,
+            "title": m.title,
+            "points": [
+                {"id": p.id, "text": p.text, "checked": p.checked, "sort_order": p.sort_order}
+                for p in m.points
+            ],
+            "sort_order": m.sort_order,
+        }
+        for m in mod_result.scalars().all()
+    ]
+
+    rub_result = await db.execute(
+        select(Rubric)
+        .options(selectinload(Rubric.points))
+        .where(Rubric.project_id == project_id)
+        .order_by(Rubric.sort_order)
+    )
+    rubrics_data = [
+        {
+            "id": r.id,
+            "title": r.title,
+            "points": [
+                {"id": p.id, "text": p.text, "checked": p.checked, "sort_order": p.sort_order}
+                for p in r.points
+            ],
+            "sort_order": r.sort_order,
+        }
+        for r in rub_result.scalars().all()
+    ]
+
     async def event_generator():
         full_response = ""
         try:
-            async for token_json in stream_chat_agent(project_id, history, body.message):
+            async for token_json in stream_chat_agent(
+                project_id, history, body.message, modules_data, rubrics_data,
+            ):
                 yield f"data: {token_json}\n\n"
                 data = json.loads(token_json)
                 if data.get("type") == "text":
                     full_response += data["text"]
+                elif data.get("type") == "rubric_update":
+                    async with async_session() as save_db:
+                        for update in data["updates"]:
+                            point = await save_db.get(RubricPoint, update["point_id"])
+                            if point:
+                                point.checked = update["checked"]
+                        await save_db.commit()
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'text': str(e)})}\n\n"
         finally:

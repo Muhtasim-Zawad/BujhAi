@@ -24,21 +24,43 @@ def _get_chat() -> ChatGroq:
         )
     return _chat
 
-SYSTEM_PROMPT = (
-    "You are BujhAI, an AI-powered learning assistant. "
-    "You help users learn by answering questions, providing explanations, "
-    "and guiding them through project-based learning. "
-    "Be concise, clear, and supportive."
-)
+
+EVALUATOR_SYSTEM = """You are an evaluator assessing a student's answer against rubric criteria.
+
+Given the rubric criteria and the student's answer, determine which criteria are satisfied.
+Respond ONLY with valid JSON — no markdown, no extra text:
+{
+  "evaluation_text": "Your assessment of the student's answer...",
+  "rubric_updates": [
+    {"rubric_id": "...", "point_id": "...", "checked": true}
+  ]
+}
+- Set checked=true if the answer demonstrates that criterion
+- Set checked=false if it does NOT
+- Only include criteria that are directly relevant to the answer
+- The evaluation_text should be encouraging and specific"""
+
+STUDENT_SYSTEM = """You are a friendly tutor. Your role is to teach the user based on the learning materials.
+
+Rules:
+- Reference the materials when explaining concepts
+- Ask questions to check understanding
+- Adjust complexity based on rubric progress
+- Keep responses concise and engaging
+- If the user seems stuck, offer simpler explanations"""
 
 
 class AgentState(TypedDict):
     messages: list[BaseMessage]
     user_input: str
+    project_id: str
     needs_rag: bool
     context_chunks: list[dict]
-    project_id: str
-    response: str
+    modules_json: str
+    rubrics_json: str
+    evaluator_response: str
+    rubric_updates: list[dict]
+    student_response: str
 
 
 def _classify_rag(user_input: str) -> bool:
@@ -46,8 +68,7 @@ def _classify_rag(user_input: str) -> bool:
         "material", "document", "upload", "pdf", "file", "reading",
         "according to", "in the text", "what does it say", "summarize",
     ]
-    lower = user_input.lower()
-    return any(kw in lower for kw in keywords)
+    return any(kw in user_input.lower() for kw in keywords)
 
 
 def router_node(state: AgentState) -> dict:
@@ -59,40 +80,106 @@ def retrieve_node(state: AgentState) -> dict:
     return {"context_chunks": chunks}
 
 
-def build_prompt_node(state: AgentState) -> dict:
-    system = SYSTEM_PROMPT
+def _format_core_context(state: AgentState) -> str:
+    parts = []
     chunks = state.get("context_chunks") or []
-
     if chunks:
         context_text = "\n\n".join(
             f"[Source: {c['metadata'].get('file_name', 'unknown')}]\n{c['text']}"
             for c in chunks
         )
-        system += (
-            "\n\nYou have access to the following materials uploaded by the user. "
-            "Use them to answer questions when relevant. If the answer is not in the "
-            "materials, say so and answer from your own knowledge.\n\n"
-            f"--- Materials ---\n{context_text}"
-        )
+        parts.append(f"--- Materials ---\n{context_text}")
 
-    langchain_messages: list[BaseMessage] = [SystemMessage(content=system)]
-    for m in state["messages"]:
-        if isinstance(m, BaseMessage):
-            langchain_messages.append(m)
-        elif m.get("role") == "user":
-            langchain_messages.append(HumanMessage(content=m["content"]))
-        else:
-            langchain_messages.append(AIMessage(content=m["content"]))
-    langchain_messages.append(HumanMessage(content=state["user_input"]))
+    rubrics_raw = state.get("rubrics_json") or "[]"
+    try:
+        rubrics = json.loads(rubrics_raw)
+        if rubrics:
+            parts.append("--- Rubric Progress ---")
+            for r in rubrics:
+                pts = r.get("points", [])
+                checked_count = sum(1 for p in pts if p.get("checked"))
+                parts.append(f"{r['title']}: {checked_count}/{len(pts)} criteria met")
+    except (json.JSONDecodeError, KeyError):
+        pass
 
-    return {"messages": langchain_messages}
+    modules_raw = state.get("modules_json") or "[]"
+    try:
+        modules = json.loads(modules_raw)
+        if modules:
+            parts.append("--- Module Progress ---")
+            for m in modules:
+                pts = m.get("points", [])
+                checked_count = sum(1 for p in pts if p.get("checked"))
+                total = len(pts)
+                parts.append(f"{m['title']}: {checked_count}/{total} complete")
+    except (json.JSONDecodeError, KeyError):
+        pass
+
+    return "\n\n".join(parts)
 
 
-async def call_llm_node(state: AgentState) -> dict:
+async def evaluate_node(state: AgentState) -> dict:
+    context = _format_core_context(state)
+
+    prompt = f"""Current rubric progress and materials:
+{context}
+
+Student's message to evaluate:
+{state['user_input']}"""
+
+    response = await _get_chat().ainvoke([
+        SystemMessage(content=EVALUATOR_SYSTEM),
+        HumanMessage(content=prompt),
+    ])
+
+    raw = response.content or "{}"
+    parsed = _parse_json(raw)
+    eval_text = (parsed or {}).get("evaluation_text", "")
+    updates = (parsed or {}).get("rubric_updates", [])
+
+    return {
+        "evaluator_response": eval_text,
+        "rubric_updates": updates,
+    }
+
+
+async def student_node(state: AgentState) -> dict:
+    context = _format_core_context(state)
+    rubric_summary = ""
+    try:
+        updates = state.get("rubric_updates") or []
+        if updates:
+            rubric_summary = f"\nJust evaluated: {len(updates)} rubric criteria were checked. Adjust your teaching accordingly."
+    except Exception:
+        pass
+
+    messages = [SystemMessage(content=STUDENT_SYSTEM + rubric_summary)]
+    messages.append(HumanMessage(
+        content=f"Current material context and progress:\n{context}\n\n"
+                f"Conversation history will follow, then the user's message.\n\n"
+                f"User message:\n{state['user_input']}"
+    ))
+
     content = ""
-    async for chunk in _get_chat().astream(state["messages"]):
+    async for chunk in _get_chat().astream(messages):
         content += chunk.content if hasattr(chunk, "content") else ""
-    return {"response": content}
+
+    return {"student_response": content}
+
+
+def _parse_json(raw: str) -> dict | None:
+    import re
+    match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw, re.DOTALL)
+    if match:
+        raw = match.group(1)
+    start = raw.find("{")
+    end = raw.rfind("}")
+    if start >= 0 and end > start:
+        try:
+            return json.loads(raw[start: end + 1])
+        except json.JSONDecodeError:
+            pass
+    return None
 
 
 def build_graph():
@@ -100,17 +187,17 @@ def build_graph():
 
     builder.add_node("router", router_node)
     builder.add_node("retrieve", retrieve_node)
-    builder.add_node("build_prompt", build_prompt_node)
-    builder.add_node("call_llm", call_llm_node)
+    builder.add_node("evaluate", evaluate_node)
+    builder.add_node("student", student_node)
 
     builder.add_edge(START, "router")
     builder.add_conditional_edges(
         "router",
-        lambda s: "retrieve" if s["needs_rag"] else "build_prompt",
+        lambda s: "retrieve" if s["needs_rag"] else "evaluate",
     )
-    builder.add_edge("retrieve", "build_prompt")
-    builder.add_edge("build_prompt", "call_llm")
-    builder.add_edge("call_llm", END)
+    builder.add_edge("retrieve", "evaluate")
+    builder.add_edge("evaluate", "student")
+    builder.add_edge("student", END)
 
     return builder.compile()
 
@@ -122,30 +209,49 @@ async def stream_chat_agent(
     project_id: str,
     messages: list[dict],
     user_input: str,
+    modules_data: list[dict] | None = None,
+    rubrics_data: list[dict] | None = None,
 ) -> AsyncGenerator[str, None]:
     config = {"configurable": {"thread_id": project_id}}
-    full_response = ""
 
+    evaluator_done = False
     async for event in graph.astream_events(
         {
             "messages": messages,
             "user_input": user_input,
+            "project_id": project_id,
             "needs_rag": False,
             "context_chunks": [],
-            "project_id": project_id,
+            "modules_json": json.dumps(modules_data or []),
+            "rubrics_json": json.dumps(rubrics_data or []),
+            "evaluator_response": "",
+            "rubric_updates": [],
+            "student_response": "",
         },
         config,
         version="v2",
     ):
         kind = event["event"]
+        name = event.get("name", "")
 
-        if kind == "on_chat_model_stream":
+        if kind == "on_chain_end" and name == "evaluate":
+            output = event["data"].get("output", {})
+            eval_text = output.get("evaluator_response", "")
+            updates = output.get("rubric_updates", [])
+            yield json.dumps({"type": "evaluator_start"})
+            if eval_text:
+                yield json.dumps({"type": "text", "text": eval_text})
+            if updates:
+                yield json.dumps({"type": "rubric_update", "updates": updates})
+            yield json.dumps({"type": "student_start"})
+            evaluator_done = True
+
+        elif kind == "on_chat_model_stream" and evaluator_done:
             chunk = event["data"].get("chunk")
             if chunk is not None:
                 content = chunk.content if hasattr(chunk, "content") else ""
                 if content:
-                    full_response += content
                     yield json.dumps({"type": "text", "text": content}, ensure_ascii=False)
 
-        elif kind == "on_chain_end" and event.get("name") == "call_llm":
+        elif kind == "on_chain_end" and name == "student":
             yield json.dumps({"type": "finish", "finishReason": "stop"})
