@@ -25,7 +25,7 @@ export default function StudySpace({ project, onBack }) {
 			{activeSection === "study" && (
 				<>
 					<div className="flex-1 overflow-hidden rounded-xl border-2 border-black bg-card shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-						<ChatInterface />
+						<ChatInterface projectId={project.id || project.title} />
 					</div>
 					<ChatRightSidebar />
 				</>
