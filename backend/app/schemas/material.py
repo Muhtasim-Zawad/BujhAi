@@ -10,3 +10,9 @@ class MaterialResponse(BaseModel):
     chunk_count: int | None = None
 
     model_config = {"from_attributes": True}
+
+
+class UploadResponse(BaseModel):
+    material: MaterialResponse
+    generated_modules: list[dict] | None = None
+    generated_rubrics: list[dict] | None = None

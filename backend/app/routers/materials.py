@@ -8,7 +8,8 @@ from app.config import settings
 from app.database import get_db
 from app.models.material import Material
 from app.models.project import Project
-from app.schemas.material import MaterialResponse
+from app.schemas.material import MaterialResponse, UploadResponse
+from app.services.generator import generate_from_materials
 from app.services.rag import delete_material, ingest_text
 from app.utils import nanoid
 
@@ -51,7 +52,7 @@ async def list_materials(
     return result.scalars().all()
 
 
-@router.post("/upload", response_model=MaterialResponse, status_code=201)
+@router.post("/upload", response_model=UploadResponse, status_code=201)
 async def upload_material(
     project_id: str,
     file: UploadFile = File(...),
@@ -92,7 +93,15 @@ async def upload_material(
     db.add(material)
     await db.commit()
     await db.refresh(material)
-    return material
+
+    generated = await generate_from_materials(project_id, db)
+
+    resp = UploadResponse(material=MaterialResponse.model_validate(material))
+    if generated:
+        resp.generated_modules = generated.get("modules")
+        resp.generated_rubrics = generated.get("rubrics")
+
+    return resp
 
 
 @router.delete("/{material_id}", status_code=204)

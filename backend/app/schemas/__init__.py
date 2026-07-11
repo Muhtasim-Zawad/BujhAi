@@ -1,6 +1,6 @@
 from app.schemas.canvas import CanvasAnalyzeResponse, CanvasSaveRequest, CanvasSceneResponse
 from app.schemas.chat import ChatRequest
-from app.schemas.material import MaterialResponse
+from app.schemas.material import MaterialResponse, UploadResponse
 from app.schemas.rubric import RubricCreate, RubricPointCreate, RubricPointResponse, RubricPointUpdate, RubricResponse
 from app.schemas.module import (
     ModuleCreate,
