@@ -34,7 +34,7 @@ const projects = [
 	},
 ];
 
-export default function Navbar() {
+export default function Navbar({ onCreateProject }) {
 	return (
 		<div className="w-full p-6 mx-auto max-w-6xl">
 			<nav className="flex items-center justify-between bg-white border-2 border-black rounded-xl px-6 py-3 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
@@ -106,6 +106,7 @@ export default function Navbar() {
 						variant="outline"
 						size="sm"
 						className="border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+						onClick={onCreateProject}
 					>
 						New Project
 					</Button>
