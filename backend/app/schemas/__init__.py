@@ -1,7 +1,6 @@
 from app.schemas.canvas import CanvasAnalyzeResponse, CanvasSaveRequest, CanvasSceneResponse
 from app.schemas.chat import ChatRequest
 from app.schemas.material import MaterialResponse, UploadResponse
-from app.schemas.rubric import RubricCreate, RubricPointCreate, RubricPointResponse, RubricPointUpdate, RubricResponse
 from app.schemas.module import (
     ModuleCreate,
     ModulePointCreate,
@@ -11,7 +10,9 @@ from app.schemas.module import (
     ModuleUpdate,
 )
 from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate
-from app.schemas.rubric import RubricPointCreate, RubricPointResponse, RubricPointUpdate
+from app.schemas.resource import ResourceResponse
+from app.schemas.rubric import RubricCreate, RubricPointCreate, RubricPointResponse, RubricPointUpdate, RubricResponse
+from app.schemas.stats import ProjectStats
 from app.schemas.stt import STTResponse
 
 __all__ = [
@@ -28,11 +29,14 @@ __all__ = [
     "ModuleUpdate",
     "ProjectCreate",
     "ProjectResponse",
+    "ProjectStats",
     "ProjectUpdate",
+    "ResourceResponse",
     "RubricCreate",
     "RubricResponse",
     "RubricPointCreate",
     "RubricPointResponse",
     "RubricPointUpdate",
     "STTResponse",
+    "UploadResponse",
 ]

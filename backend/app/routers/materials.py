@@ -94,12 +94,13 @@ async def upload_material(
     await db.commit()
     await db.refresh(material)
 
-    generated = await generate_from_materials(project_id, db)
+    generated = await generate_from_materials(project_id, db, source_material_id=material_id)
 
     resp = UploadResponse(material=MaterialResponse.model_validate(material))
     if generated:
         resp.generated_modules = generated.get("modules")
         resp.generated_rubrics = generated.get("rubrics")
+        resp.generated_resources = generated.get("resources")
 
     return resp
 

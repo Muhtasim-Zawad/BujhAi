@@ -27,3 +27,4 @@ class Project(Base):
     rubrics = relationship("Rubric", back_populates="project", cascade="all, delete-orphan")
     messages = relationship("Message", back_populates="project", cascade="all, delete-orphan")
     canvas_scenes = relationship("CanvasScene", back_populates="project", cascade="all, delete-orphan")
+    resources = relationship("Resource", back_populates="project", cascade="all, delete-orphan")
