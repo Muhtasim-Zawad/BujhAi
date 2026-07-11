@@ -6,16 +6,20 @@ import "@fontsource/space-grotesk/500.css";
 // import Navbar from "./components/layout/Navbar";
 // import Dashboard from "./components/sections/Dashboard";
 // import ChatInterface from "./components/layout/ChatInterface";
-import ChatLeftSidebar from "./components/layout/ChatLeftSidebar";
-import ChatRightSidebar from "./components/layout/ChatRightSidebar";
+// import ChatLeftSidebar from "./components/layout/ChatLeftSidebar";
+// import ChatRightSidebar from "./components/layout/ChatRightSidebar";
+// import Materials from "./components/layout/Materials";
+import Stats from "./components/layout/Stats";
 
 function App() {
 	return (
 		<div className="flex flex-col min-h-screen w-screen overflow-y-auto">
 			{/* <Dashboard /> */}
 			{/* <ChatInterface /> */}
-			<ChatLeftSidebar />
-			<ChatRightSidebar />
+			{/* <ChatLeftSidebar /> */}
+			{/* <ChatRightSidebar /> */}
+			{/* <Materials /> */}
+			<Stats />
 		</div>
 	);
 }
