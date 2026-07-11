@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.rubric import Rubric, RubricPoint
-from app.schemas.material import RubricCreate, RubricResponse
+from app.schemas.rubric import RubricCreate, RubricResponse
 from app.utils import nanoid
 from fastapi import APIRouter, Depends, HTTPException
 

@@ -10,8 +10,7 @@ from app.database import async_session, get_db
 from app.models.message import Message
 from app.models.project import Project
 from app.schemas.chat import ChatRequest
-from app.services.llm import stream_chat
-from app.services.rag import search as rag_search
+from app.services.agent import stream_chat_agent
 
 router = APIRouter(prefix="/projects/{project_id}/chat", tags=["chat"])
 
@@ -56,12 +55,10 @@ async def chat_stream(
         if m.id != user_msg.id
     ]
 
-    context_chunks = rag_search(project_id, body.message, k=5)
-
     async def event_generator():
         full_response = ""
         try:
-            async for token_json in stream_chat(history, body.message, context_chunks):
+            async for token_json in stream_chat_agent(project_id, history, body.message):
                 yield f"data: {token_json}\n\n"
                 data = json.loads(token_json)
                 if data.get("type") == "text":

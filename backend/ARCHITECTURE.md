@@ -24,10 +24,12 @@ backend/
 │   ├── database.py               # DB engine & session (async SQLAlchemy)
 │   ├── routers/
 │   │   ├── projects.py           # CRUD projects
-│   │   ├── modules.py            # CRUD modules, points, progress
-│   │   ├── materials.py          # Upload files, CRUD rubrics
-│   │   ├── chat.py               # Chat endpoint (SSE streaming)
+│   │   ├── modules.py            # CRUD modules + points (checklist items)
+│   │   ├── rubrics.py            # CRUD rubrics + rubric points
+│   │   ├── materials.py          # Upload files, trigger AI generation
+│   │   ├── chat.py               # Dual-persona chat endpoint (SSE)
 │   │   ├── stats.py              # Aggregated stats
+│   │   ├── stt.py                # Speech-to-text (Whisper)
 │   │   └── canvas.py             # Save/Load excalidraw scenes
 │   ├── models/                   # SQLAlchemy ORM models
 │   │   ├── project.py
@@ -37,10 +39,19 @@ backend/
 │   │   ├── message.py
 │   │   └── canvas_scene.py
 │   ├── schemas/                  # Pydantic request/response models
+│   │   ├── __init__.py
+│   │   ├── project.py
+│   │   ├── module.py
+│   │   ├── chat.py
+│   │   ├── material.py
+│   │   ├── rubric.py
+│   │   ├── canvas.py
+│   │   └── stt.py
 │   └── services/
 │       ├── rag.py                # ChromaDB ingestion, retrieval
-│       ├── llm.py                # LangChain + Groq orchestration
-│       ├── agent.py              # LangGraph workflow definition
+│       ├── llm.py                # Direct Groq client (legacy)
+│       ├── agent.py              # LangGraph dual-persona agent
+│       ├── generator.py          # AI generation of modules & rubrics
 │       ├── stt.py                # Whisper / Groq STT
 │       └── excalidraw.py         # Excalidraw JSON => text extraction
 ├── alembic/                      # DB migrations
@@ -210,21 +221,53 @@ Chat query -> Retrieve relevant chunks from ChromaDB (filter by project_id)
 
 **Key:** Filter ChromaDB by `project_id` so each project has isolated RAG.
 
-### 5b. LangGraph Agent (`services/agent.py`)
+### 5b. LangGraph Dual-Persona Agent (`services/agent.py`)
 
-A simple agent graph:
+The agent orchestrates two AI personas per user message:
 
 ```
 User message
-  |- [node] router: does message need RAG? (classifier)
-  |   |- yes -> [node] retrieve_context
+  |- [node] router: does message need RAG?
+  |   |- yes -> [node] retrieve_context (ChromaDB)
   |   \- no  -> skip
-  |- [node] build_prompt (system + context + history)
-  |- [node] call_llm (Groq streaming)
-  \- [node] save_message (to DB)
+  |- [node] evaluate: evaluate user answer against rubrics
+  |   -> generates evaluator assessment text
+  |   -> generates rubric_updates (which points to check/uncheck)
+  |- [node] student: generate next teaching response
+  |   -> uses materials + module progress + rubric state
+  |- Output: streamed SSE events (evaluator -> rubric_update -> student)
 ```
 
-Later you can add tool nodes (e.g., "fetch module stats", "create rubric point").
+**State:**
+
+```python
+class AgentState(TypedDict):
+    messages: list[BaseMessage]    # conversation history
+    user_input: str                # current user message
+    project_id: str
+    needs_rag: bool                # RAG classifier output
+    context_chunks: list[dict]     # ChromaDB retrieval results
+    modules: list[dict]            # current module state (for context)
+    rubrics: list[dict]            # current rubric state (for evaluation)
+    evaluator_response: str        # evaluator assessment text
+    rubric_updates: list[dict]     # [{rubric_id, point_id, checked}]
+    student_response: str          # student question/response text
+```
+
+**Streaming event order (SSE):**
+
+```
+data: {"type": "evaluator_start"}
+data: {"type": "text", "text": "Great answer! You correctly..."}     # streaming
+data: {"type": "text", "text": " explained the concept of..."}
+data: {"type": "rubric_update", "updates": [
+  {"rubric_id": "r1", "point_id": "p1", "checked": true},
+  {"rubric_id": "r1", "point_id": "p2", "checked": false}
+]}
+data: {"type": "student_start"}
+data: {"type": "text", "text": "Now let's explore..."}               # streaming
+data: {"type": "finish", "finishReason": "stop"}
+```
 
 ### 5c. Excalidraw to Text (`services/excalidraw.py`)
 
@@ -279,51 +322,116 @@ async def transcribe(file: UploadFile = File(...)):
 
 ### 5e. Chat Streaming (SSE)
 
+Each user message produces a combined response with three phases:
+
+| Phase | Event Type | Description |
+|---|---|---|
+| Evaluator | `evaluator_start` → `text` tokens → `rubric_update` | Assesses user answer against rubrics, returns which criteria are met |
+| Student | `student_start` → `text` tokens | Generates next teaching question/response based on materials + module progress |
+
+The single endpoint handles both personas — no explicit mode flag needed:
+
 ```python
 @router.post("/projects/{pid}/chat/stream")
 async def chat_stream(body: ChatRequest, db: AsyncSession = Depends(get_db)):
     async def event_generator():
-        async for token in agent.astream(...):
-            yield f"data: {json.dumps({'token': token})}\n\n"
-        yield f"data: {json.dumps({'done': True})}\n\n"
-
+        async for event in stream_chat_agent(project_id, history, body.message):
+            yield f"data: {json.dumps(event)}\n\n"
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 ```
 
-**Frontend:** Use `@ai-sdk/react`'s `useChat` hook which already handles SSE.
+**Frontend:** Listen for `evaluator_start`/`student_start` to toggle UI styles, `text` for content, `rubric_update` to update rubric checkboxes, `finish` to end the stream.
+
+### 5f. AI Generation of Modules & Rubrics (`services/generator.py`)
+
+Triggered automatically after every material upload. The pipeline:
+
+```
+Upload material
+  -> Extract text
+  -> Chunk + embed -> Store in ChromaDB  (RAG pipeline)
+  -> LLM prompt: "Given this material, suggest modules and rubrics"
+  -> Parse structured JSON response
+  -> Delete old modules/rubrics for this project
+  -> Create new Module + ModulePoint records
+  -> Create new Rubric + RubricPoint records
+  -> Return generated data alongside upload response
+```
+
+**LLM prompt structure:**
+
+```
+You are a curriculum designer. Based on the following learning material,
+suggest modules (topics to cover) and evaluation rubrics (grading criteria).
+
+Respond ONLY with valid JSON:
+{
+  "modules": [
+    {"title": "Module name", "points": [
+      {"text": "Checklist item description"}
+    ]}
+  ],
+  "rubrics": [
+    {"title": "Criteria name", "points": [
+      {"text": "Standard description"}
+    ]}
+  ]
+}
+```
+
+**Key rules:**
+- Generation replaces all existing modules and rubrics for the project
+- Users can manually edit/add/delete after generation via CRUD endpoints
+- Empty materials (no extractable text) skip generation
+- If multiple materials exist, all content is combined as context
 
 ---
 
 ## 6. Frontend-Backend Integration Points
 
-| Frontend Component     | Backend Endpoint                             | Notes                      |
-| ---------------------- | -------------------------------------------- | -------------------------- |
-| `Dashboard` (load)     | `GET /projects`                              | List all projects          |
-| `Dashboard` (create)   | `POST /projects`                             |                            |
-| `Dashboard` (delete)   | `DELETE /projects/{id}`                      |                            |
-| `ChatInterface` (send) | `POST /projects/{id}/chat/stream`            | SSE stream                 |
-| `ChatInterface` (mic)  | `POST /transcribe`                           | Audio->text                |
-| `ChatRightSidebar`     | `GET/POST/PUT/DELETE /projects/{id}/modules` | Modules CRUD               |
-| `Materials` (upload)   | `POST /projects/{id}/materials/upload`       | Save to local `materials/` |
-| `Materials` (rubrics)  | `GET/POST/PUT/DELETE /projects/{id}/rubrics` | Rubrics CRUD               |
-| `Stats`                | `GET /projects/{id}/stats`                   | Aggregated stats           |
-| `Canvas` (save)        | `PUT /projects/{id}/canvas`                  |                            |
-| `Canvas` (load)        | `GET /projects/{id}/canvas`                  |                            |
+| Frontend Component         | Backend Endpoint                                                  | Notes                                              |
+| -------------------------- | ----------------------------------------------------------------- | -------------------------------------------------- |
+| `Dashboard` (load)         | `GET /projects`                                                   | List all projects                                  |
+| `Dashboard` (create)       | `POST /projects`                                                  |                                                    |
+| `Dashboard` (delete)       | `DELETE /projects/{id}`                                           |                                                    |
+| `ChatInterface` (send)     | `POST /projects/{id}/chat/stream`                                 | SSE: evaluator + student combined response         |
+| `ChatInterface` (mic)      | `POST /projects/{id}/stt/transcribe`                              | Audio->text via Whisper                            |
+| `ChatRightSidebar`         | `GET/POST/PUT/DELETE /projects/{id}/modules`                      | Modules CRUD                                       |
+| `ChatRightSidebar` (pts)   | `POST/PUT/DELETE /projects/{id}/modules/{mid}/points`             | Module point CRUD (checklist items)                |
+| `Materials` (upload)       | `POST /projects/{id}/materials/upload`                            | Save file + trigger AI generation of modules/rubrics |
+| `Materials` (rubrics)      | `GET/POST/PUT/DELETE /projects/{id}/rubrics`                      | Rubrics CRUD                                       |
+| `Materials` (rubric pts)   | `POST/PUT/DELETE /projects/{id}/rubrics/{rid}/points`             | Rubric point CRUD (standards)                      |
+| `Stats`                    | `GET /projects/{id}/stats`                                        | Aggregated stats                                   |
+| `Canvas` (save)            | `PUT /projects/{id}/canvas`                                       |                                                    |
+| `Canvas` (load)            | `GET /projects/{id}/canvas`                                       |                                                    |
+| `Canvas` (analyze)         | `POST /projects/{id}/canvas/analyze`                              | Parse excalidraw JSON -> text                      |
 
 ---
 
 ## 7. Implementation Order
 
-1. **FastAPI scaffold** — single-file start, SQLite DB, basic routers
+### Completed
+1. **FastAPI scaffold** — SQLite, 8 ORM models, router stubs, health check
 2. **Project CRUD** — full Create/Read/Update/Delete with DB persistence
-3. **Chat with mock -> switch to Groq** — streaming first, then add LangChain
-4. **RAG pipeline** — material upload -> chunk -> embed -> retrieve
-5. **STT** — mic button works end-to-end
-6. **Excalidraw->text** — pass canvas as context in chat
-7. **LangGraph** — agent workflows (optional, after basic chat is solid)
-8. **Auth (future)** — Supabase Auth, swap SQLite for Postgres, RLS policies
+3. **Chat with Groq streaming** — SSE streaming, message persistence
+4. **RAG pipeline** — material upload → chunk → embed (ChromaDB) → retrieve
+5. **STT** — Groq Whisper endpoint, format validation
+6. **Excalidraw->text** — parser service + canvas CRUD
+7. **LangGraph agent** — dual-persona agent with RAG routing
 
-**Quick win:** Step 3 alone (chat streaming with Groq) will make the app feel alive — you can add RAG and STT incrementally after.
+### Remaining
+8. **Modules CRUD** — full endpoints for modules + points (manual + AI-generated)
+9. **Rubric points CRUD** — endpoints for rubric points (standards check/uncheck)
+10. **AI generator service** — `services/generator.py`: auto-generate modules & rubrics from uploaded materials
+11. **Dual-persona chat** — integrate evaluator + student nodes into agent, emit rubric_updates in SSE
+12. **Stats endpoint** — aggregate project stats
+13. **Auth (future)** — Supabase Auth, swap SQLite for Postgres, RLS policies
+
+### Key Design Decisions
+- **Auto-generation** triggers on every material upload, replacing old modules/rubrics
+- **Manual editing** always possible after generation via CRUD endpoints
+- **Combined chat response** per message: evaluator assesses → rubric updates → student teaches
+- **Rubric progress** determines when a module is complete (all points checked → next module)
 
 ---
 
@@ -349,51 +457,111 @@ dependencies = [
 
 ---
 
-## Appendix: Frontend Data Models (for reference)
+## Appendix: Data Models
+
+### Backend Pydantic Schemas
+
+```python
+# Project
+class ProjectResponse:
+    id: str
+    title: str
+    description: str
+    badge: str          # "New" | "Active" | "Draft" | "Archived"
+    image_url: str | None
+    button_text: str | None
+    created_at: datetime
+    updated_at: datetime | None
+
+# Module + Points
+class ModuleResponse:
+    id: str
+    project_id: str
+    title: str
+    sort_order: int
+    points: list[ModulePointResponse]
+
+class ModulePointResponse:
+    id: str
+    module_id: str
+    text: str
+    checked: bool
+    sort_order: int
+
+# Rubric + Points
+class RubricResponse:
+    id: str
+    project_id: str
+    title: str
+    sort_order: int
+    points: list[RubricPointResponse]
+
+class RubricPointResponse:
+    id: str
+    rubric_id: str
+    text: str
+    checked: bool
+    sort_order: int
+
+# Material
+class MaterialResponse:
+    id: str
+    project_id: str
+    file_name: str
+    file_size: int
+    mime_type: str
+    chunk_count: int | None
+
+# Message
+class MessageResponse:
+    id: int
+    role: str            # "user" | "assistant" | "system"
+    content: str
+    metadata_json: str
+    created_at: datetime
+```
+
+### SSE Chat Events
 
 ```javascript
-// Project (from Dashboard.jsx)
-{
-  title: string,
-  description: string,
-  image: string,              // avatar URL
-  badge: string,              // "Active" | "Draft" | "Archived" | "New"
-  buttonText: string,         // "Open Project"
-  modules: [ Module ]
-}
+// Combined response per user message, streamed in order:
 
-// Module (from right sidebar)
-{
-  id: string,                 // "id-N" (counter-based)
-  title: string,              // "Module N"
-  points: [
-    { id: string, text: string, checked: boolean }
-  ]
-}
+// Phase 1 — Evaluator assessment
+{ "type": "evaluator_start" }                                                  // evaluator begins
+{ "type": "text", "text": "Great point!..." }                                 // streaming token
+{ "type": "rubric_update", "updates": [                                       // which rubric criteria were met
+  { "rubric_id": "...", "point_id": "...", "checked": true },
+  { "rubric_id": "...", "point_id": "...", "checked": false }
+]}
 
-// Message (from ChatInterface)
-{
-  id: number,                 // Date.now()
-  role: "user" | "assistant",
-  content: string,
-  timestamp: Date,
-  metadata: {}                // excalidraw scene, file refs, etc.
-}
+// Phase 2 — Student follow-up
+{ "type": "student_start" }                                                    // student persona begins
+{ "type": "text", "text": "Now let's..." }                                    // streaming token
 
-// Material (from Materials.jsx)
-{
-  id: string,
-  name: string,
-  size: number,               // bytes
-  type: string                // MIME type
-}
+// End
+{ "type": "finish", "finishReason": "stop" }
 
-// Rubric (from Materials.jsx — same shape as Module)
-{
-  id: string,
-  title: string,              // "Criteria N"
-  points: [
-    { id: string, text: string, checked: boolean }
-  ]
-}
+// Error
+{ "type": "error", "text": "Error message" }
+```
+
+### Frontend State Shapes
+
+```javascript
+// Project
+{ title: string, description: string, image: string, badge: string,
+  buttonText: string, modules: [ Module ] }
+
+// Module
+{ id: string, title: string, points: [{ id: string, text: string, checked: boolean }] }
+
+// Rubric (same shape as Module)
+{ id: string, title: string, points: [{ id: string, text: string, checked: boolean }] }
+
+// Message
+{ id: number, role: "user" | "assistant" | "eval", content: string,
+  timestamp: Date, metadata: {} }
+
+// Material
+{ id: string, name: string, size: number, type: string }
 ```

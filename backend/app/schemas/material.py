@@ -10,15 +10,3 @@ class MaterialResponse(BaseModel):
     chunk_count: int | None = None
 
     model_config = {"from_attributes": True}
-
-
-class RubricCreate(BaseModel):
-    title: str
-
-
-class RubricResponse(BaseModel):
-    id: str
-    title: str
-    sort_order: int
-
-    model_config = {"from_attributes": True}
