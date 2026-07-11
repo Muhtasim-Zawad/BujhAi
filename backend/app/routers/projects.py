@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.project import Project
 from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate
+from app.services.rag import delete_collection
 from app.utils import nanoid
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -66,5 +67,6 @@ async def delete_project(project_id: str, db: AsyncSession = Depends(get_db)):
     if not project:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
+    delete_collection(project_id)
     await db.delete(project)
     await db.commit()

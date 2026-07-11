@@ -178,17 +178,17 @@ CREATE INDEX idx_canvas_project ON canvas_scenes(project_id);
 
 ## 4. Tech Stack
 
-| Layer | Choice | Why |
-|---|---|---|
-| **Framework** | FastAPI | Async, auto OpenAPI, SSE for streaming |
-| **ORM** | SQLAlchemy 2.0 (async) | Mature, Alembic migrations |
-| **DB** | SQLite (aiosqlite) | Zero setup, file-based, easy to migrate later |
-| **Vector store** | ChromaDB | Persistent, simple API, runs alongside FastAPI |
-| **LLM provider** | Groq Cloud | Fast inference, free tier, Llama/Mixtral models |
-| **AI orchestration** | LangChain + LangGraph | LangGraph for multi-step agent workflows |
-| **STT** | Groq Cloud Whisper API | Cheap, fast, same provider as LLMs |
-| **File storage** | Local filesystem (`materials/`) | Simple — swap to S3/Supabase later |
-| **Excalidraw->text** | Custom parser + LLM | Extract elements JSON > LLM summarizes |
+| Layer                | Choice                          | Why                                             |
+| -------------------- | ------------------------------- | ----------------------------------------------- |
+| **Framework**        | FastAPI                         | Async, auto OpenAPI, SSE for streaming          |
+| **ORM**              | SQLAlchemy 2.0 (async)          | Mature, Alembic migrations                      |
+| **DB**               | SQLite (aiosqlite)              | Zero setup, file-based, easy to migrate later   |
+| **Vector store**     | ChromaDB                        | Persistent, simple API, runs alongside FastAPI  |
+| **LLM provider**     | Groq Cloud                      | Fast inference, free tier, Llama/Mixtral models |
+| **AI orchestration** | LangChain + LangGraph           | LangGraph for multi-step agent workflows        |
+| **STT**              | Groq Cloud Whisper API          | Cheap, fast, same provider as LLMs              |
+| **File storage**     | Local filesystem (`materials/`) | Simple — swap to S3/Supabase later              |
+| **Excalidraw->text** | Custom parser + LLM             | Extract elements JSON > LLM summarizes          |
 
 > **Auth:** Skipped for now (single-user). When multi-user is needed, add Supabase Auth + swap SQLite for Postgres.
 
@@ -232,13 +232,25 @@ Excalidraw's scene data is a JSON array of elements:
 
 ```json
 [
-  { "type": "text", "text": "Hello", "x": 100, "y": 200 },
-  { "type": "rectangle", "width": 150, "height": 80, "label": { "text": "Box A" } },
-  { "type": "arrow", "points": [[0,0], [100,50]] }
+	{ "type": "text", "text": "Hello", "x": 100, "y": 200 },
+	{
+		"type": "rectangle",
+		"width": 150,
+		"height": 80,
+		"label": { "text": "Box A" }
+	},
+	{
+		"type": "arrow",
+		"points": [
+			[0, 0],
+			[100, 50]
+		]
+	}
 ]
 ```
 
 **Pipeline:**
+
 1. Extract all text elements -> concatenate
 2. For shapes, extract any `label.text` or `groupIds`
 3. For arrows/connectors, infer relationships
@@ -284,19 +296,19 @@ async def chat_stream(body: ChatRequest, db: AsyncSession = Depends(get_db)):
 
 ## 6. Frontend-Backend Integration Points
 
-| Frontend Component | Backend Endpoint | Notes |
-|---|---|---|
-| `Dashboard` (load) | `GET /projects` | List all projects |
-| `Dashboard` (create) | `POST /projects` | |
-| `Dashboard` (delete) | `DELETE /projects/{id}` | |
-| `ChatInterface` (send) | `POST /projects/{id}/chat/stream` | SSE stream |
-| `ChatInterface` (mic) | `POST /transcribe` | Audio->text |
-| `ChatRightSidebar` | `GET/POST/PUT/DELETE /projects/{id}/modules` | Modules CRUD |
-| `Materials` (upload) | `POST /projects/{id}/materials/upload` | Save to local `materials/` |
-| `Materials` (rubrics) | `GET/POST/PUT/DELETE /projects/{id}/rubrics` | Rubrics CRUD |
-| `Stats` | `GET /projects/{id}/stats` | Aggregated stats |
-| `Canvas` (save) | `PUT /projects/{id}/canvas` | |
-| `Canvas` (load) | `GET /projects/{id}/canvas` | |
+| Frontend Component     | Backend Endpoint                             | Notes                      |
+| ---------------------- | -------------------------------------------- | -------------------------- |
+| `Dashboard` (load)     | `GET /projects`                              | List all projects          |
+| `Dashboard` (create)   | `POST /projects`                             |                            |
+| `Dashboard` (delete)   | `DELETE /projects/{id}`                      |                            |
+| `ChatInterface` (send) | `POST /projects/{id}/chat/stream`            | SSE stream                 |
+| `ChatInterface` (mic)  | `POST /transcribe`                           | Audio->text                |
+| `ChatRightSidebar`     | `GET/POST/PUT/DELETE /projects/{id}/modules` | Modules CRUD               |
+| `Materials` (upload)   | `POST /projects/{id}/materials/upload`       | Save to local `materials/` |
+| `Materials` (rubrics)  | `GET/POST/PUT/DELETE /projects/{id}/rubrics` | Rubrics CRUD               |
+| `Stats`                | `GET /projects/{id}/stats`                   | Aggregated stats           |
+| `Canvas` (save)        | `PUT /projects/{id}/canvas`                  |                            |
+| `Canvas` (load)        | `GET /projects/{id}/canvas`                  |                            |
 
 ---
 
@@ -315,9 +327,9 @@ async def chat_stream(body: ChatRequest, db: AsyncSession = Depends(get_db)):
 
 ---
 
-## 8. Key Dependencies (`pyproject.toml`)
+## 8. Key Dependencies (`requirements.txt`)
 
-```toml
+```requirements
 dependencies = [
     "fastapi[standard]>=0.115.0",
     "sqlalchemy[asyncio]>=2.0",

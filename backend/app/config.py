@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     groq_model: str = "llama-3.3-70b-versatile"
 
     materials_dir: str = "materials"
+    chroma_db_dir: str = "chroma_db"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
