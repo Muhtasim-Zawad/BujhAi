@@ -21,6 +21,7 @@ def _get_chat() -> ChatGroq:
             model=settings.groq_model,
             temperature=0.7,
             max_tokens=4096,
+            api_key=settings.groq_api_key,
         )
     return _chat
 

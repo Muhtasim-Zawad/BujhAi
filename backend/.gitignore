@@ -41,3 +41,14 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# Local Databases and Vector Stores
+bujhai.db
+chroma_db/
+chroma_test_dl/
+
+# Uploaded Runtime Materials
+materials/
+
+# Uvicorn server logs
+uvicorn_*.txt

@@ -1,13 +1,16 @@
 import os
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
 from app.models.material import Material
+from app.models.module import Module, ModulePoint
 from app.models.project import Project
+from app.models.resource import Resource
+from app.models.rubric import Rubric, RubricPoint
 from app.schemas.material import MaterialResponse, UploadResponse
 from app.services.generator import generate_from_materials
 from app.services.rag import delete_material, ingest_text
@@ -122,5 +125,20 @@ async def delete_material_route(
 
     await db.delete(material)
     await db.commit()
+
+    remaining = await db.scalar(
+        select(func.count()).select_from(Material).where(Material.project_id == project_id)
+    )
+    if not remaining:
+        await db.execute(delete(ModulePoint).where(
+            ModulePoint.module_id.in_(select(Module.id).where(Module.project_id == project_id))
+        ))
+        await db.execute(delete(Module).where(Module.project_id == project_id))
+        await db.execute(delete(RubricPoint).where(
+            RubricPoint.rubric_id.in_(select(Rubric.id).where(Rubric.project_id == project_id))
+        ))
+        await db.execute(delete(Rubric).where(Rubric.project_id == project_id))
+        await db.execute(delete(Resource).where(Resource.project_id == project_id))
+        await db.commit()
 
 
