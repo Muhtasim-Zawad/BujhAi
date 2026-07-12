@@ -91,16 +91,14 @@ export default function Navbar({ projects = [], onCreateProject, onOpenProject }
 						New Project
 					</Button>
 					<HoverCard openDelay={200} closeDelay={100}>
-						<HoverCardTrigger asChild>
-							<button className="cursor-pointer rounded-full transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-								<Avatar
-									size="sm"
-									className="border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-								>
-									<AvatarImage src="" alt="User" />
-									<AvatarFallback>U</AvatarFallback>
-								</Avatar>
-							</button>
+						<HoverCardTrigger render={<button className="cursor-pointer rounded-full transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" />}>
+							<Avatar
+								size="sm"
+								className="border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+							>
+								<AvatarImage src="" alt="User" />
+								<AvatarFallback>U</AvatarFallback>
+							</Avatar>
 						</HoverCardTrigger>
 						<HoverCardContent
 							className="w-56 border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] data-open:fade-in-100 data-open:zoom-in-100 data-closed:fade-out-100 data-closed:zoom-out-100"

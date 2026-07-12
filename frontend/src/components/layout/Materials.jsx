@@ -91,6 +91,7 @@ export default function Materials({ projectId }) {
 			setMaterials((prev) => [...prev, result.material]);
 			const freshRubrics = await fetchRubrics(projectId);
 			setRubrics(freshRubrics);
+			window.dispatchEvent(new CustomEvent("materials-changed"));
 			if (result.generated_modules?.length) {
 				window.dispatchEvent(
 					new CustomEvent("modules-generated", { detail: result.generated_modules }),
@@ -107,6 +108,7 @@ export default function Materials({ projectId }) {
 		try {
 			await deleteMaterial(projectId, id);
 			setMaterials((prev) => prev.filter((m) => m.id !== id));
+			window.dispatchEvent(new CustomEvent("materials-changed"));
 		} catch (err) {
 			console.error("Delete failed:", err);
 		}
@@ -323,10 +325,8 @@ export default function Materials({ projectId }) {
 								</p>
 							</div>
 							<Dialog>
-								<DialogTrigger asChild>
-									<button className="flex items-center justify-center size-7 rounded-lg border-2 border-black bg-background text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors cursor-pointer shrink-0 shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none">
-										<Trash2 className="size-3.5" />
-									</button>
+								<DialogTrigger render={<button className="flex items-center justify-center size-7 rounded-lg border-2 border-black bg-background text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors cursor-pointer shrink-0 shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none" />}>
+									<Trash2 className="size-3.5" />
 								</DialogTrigger>
 								<DialogContent className="bg-card">
 									<DialogHeader>
@@ -340,20 +340,8 @@ export default function Materials({ projectId }) {
 										</DialogDescription>
 									</DialogHeader>
 									<DialogFooter>
-										<DialogClose asChild>
-											<Button variant="outline" size="sm">
-												Cancel
-											</Button>
-										</DialogClose>
-										<DialogClose asChild>
-											<Button
-												variant="destructive"
-												size="sm"
-												onClick={() => removeMaterial(m.id)}
-											>
-												Remove
-											</Button>
-										</DialogClose>
+										<DialogClose render={<Button variant="outline" size="sm" />}>Cancel</DialogClose>
+										<DialogClose render={<Button variant="destructive" size="sm" onClick={() => removeMaterial(m.id)} />}>Remove</DialogClose>
 									</DialogFooter>
 								</DialogContent>
 							</Dialog>

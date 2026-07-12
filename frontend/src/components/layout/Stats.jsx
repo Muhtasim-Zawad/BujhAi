@@ -37,6 +37,17 @@ export default function Stats({ projectId }) {
 		});
 	}, [projectId]);
 
+	useEffect(() => {
+		const handler = () => {
+			if (!projectId) return;
+			fetchStats(projectId).then(setStats).catch(() => {});
+			fetchResources(projectId).then(setResources).catch(() => {});
+			fetchModules(projectId).then(setModules).catch(() => {});
+		};
+		window.addEventListener("materials-changed", handler);
+		return () => window.removeEventListener("materials-changed", handler);
+	}, [projectId]);
+
 	if (loading) {
 		return (
 			<div className="flex items-center justify-center h-full">

@@ -1,1 +1,0 @@
-Python is a high-level programming language. Key concepts include variables, data types, functions, and classes. Object-oriented programming uses classes and inheritance. Error handling uses try/except blocks.

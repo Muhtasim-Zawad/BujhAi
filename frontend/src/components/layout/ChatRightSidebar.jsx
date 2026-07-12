@@ -43,7 +43,11 @@ export default function ChatRightSidebar({ projectId }) {
 			fetchModules(projectId).then(setModules).catch(() => {});
 		};
 		window.addEventListener("modules-generated", handler);
-		return () => window.removeEventListener("modules-generated", handler);
+		window.addEventListener("materials-changed", handler);
+		return () => {
+			window.removeEventListener("modules-generated", handler);
+			window.removeEventListener("materials-changed", handler);
+		};
 	}, [projectId]);
 
 	useEffect(() => {

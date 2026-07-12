@@ -4,7 +4,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import Canvas, { getCanvasScene, clearCanvas, loadCanvasScene } from "@/components/layout/Canvas";
+import Canvas, {
+	getCanvasScene,
+	clearCanvas,
+	loadCanvasScene,
+} from "@/components/layout/Canvas";
 import { streamChat, sendStt, fetchCanvas, saveCanvas } from "@/utils/api";
 import {
 	Send,
@@ -122,10 +126,7 @@ export default function ChatInterface({ projectId }) {
 		setMessages((prev) => {
 			const last = prev[prev.length - 1];
 			if (!last || last.persona !== persona) return prev;
-			return [
-				...prev.slice(0, -1),
-				{ ...last, content: last.content + text },
-			];
+			return [...prev.slice(0, -1), { ...last, content: last.content + text }];
 		});
 	}, []);
 
@@ -198,20 +199,31 @@ export default function ChatInterface({ projectId }) {
 
 		if (!projectId) {
 			onStudentStart();
-			setTimeout(() => onText("Backend not connected. Please use a project created via the API."), 100);
+			setTimeout(
+				() =>
+					onText(
+						"Backend not connected. Please use a project created via the API.",
+					),
+				100,
+			);
 			setTimeout(() => onFinish(), 600);
 			return;
 		}
 
 		try {
-			await streamChat(projectId, text, {
-				onEvaluatorStart,
-				onText,
-				onRubricUpdate,
-				onStudentStart,
-				onFinish,
-				onError,
-			}, canvasData);
+			await streamChat(
+				projectId,
+				text,
+				{
+					onEvaluatorStart,
+					onText,
+					onRubricUpdate,
+					onStudentStart,
+					onFinish,
+					onError,
+				},
+				canvasData,
+			);
 		} catch (err) {
 			onError(err);
 		}
@@ -274,7 +286,10 @@ export default function ChatInterface({ projectId }) {
 	}
 
 	function stopRecording() {
-		if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+		if (
+			mediaRecorderRef.current &&
+			mediaRecorderRef.current.state !== "inactive"
+		) {
 			mediaRecorderRef.current.stop();
 		}
 	}
@@ -348,9 +363,7 @@ export default function ChatInterface({ projectId }) {
 												: "text-blue-600",
 										)}
 									>
-										{message.persona === "evaluator"
-											? "Evaluator"
-											: "Tutor"}
+										{message.persona === "evaluator" ? "Evaluator" : "Tutor"}
 									</span>
 								)}
 								<div
@@ -391,7 +404,10 @@ export default function ChatInterface({ projectId }) {
 
 			{/* Canvas panel */}
 			{showCanvas && (
-				<div className="border-t-2 border-black bg-card">
+				<div
+					className="flex min-h-0 flex-col border-t-2 border-black bg-card"
+					style={{ flex: "0 0 60%" }}
+				>
 					<div className="flex items-center justify-between border-b border-black/20 px-4 py-1.5">
 						<span className="text-xs font-semibold uppercase text-muted-foreground">
 							Canvas
@@ -404,11 +420,8 @@ export default function ChatInterface({ projectId }) {
 							Clear
 						</button>
 					</div>
-					<div style={{ height: "250px", width: "100%" }}>
-						<Canvas
-							excalidrawRef={excalidrawRef}
-							height="250px"
-						/>
+					<div className="flex-1 min-h-0">
+						<Canvas excalidrawRef={excalidrawRef} height="100%" />
 					</div>
 				</div>
 			)}
