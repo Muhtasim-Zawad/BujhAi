@@ -11,7 +11,6 @@ from app.schemas.module import (
 )
 from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate
 from app.schemas.resource import ResourceResponse
-from app.schemas.rubric import RubricCreate, RubricPointCreate, RubricPointResponse, RubricPointUpdate, RubricResponse
 from app.schemas.stats import ProjectStats
 from app.schemas.stt import STTResponse
 
