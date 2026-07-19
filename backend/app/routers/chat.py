@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.database import async_session, get_db
-from app.deps import get_current_user
+from app.deps import get_current_user, verify_project_ownership
 from app.models.message import Message
 from app.models.module import Module
 from app.models.project import Project
@@ -17,7 +17,7 @@ from app.schemas.chat import ChatRequest
 from app.services.agent import stream_chat_agent
 from app.services.excalidraw import parse_scene
 
-router = APIRouter(prefix="/projects/{project_id}/chat", tags=["chat"], dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/projects/{project_id}/chat", tags=["chat"], dependencies=[Depends(get_current_user), Depends(verify_project_ownership)])
 
 
 @router.post("/stream")

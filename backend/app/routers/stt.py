@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from app.config import settings
-from app.deps import get_current_user
+from app.deps import get_current_user, verify_project_ownership
 from app.schemas.stt import STTResponse
 from app.services.stt import SUPPORTED_FORMATS, transcribe
 
-router = APIRouter(prefix="/projects/{project_id}/stt", tags=["stt"], dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/projects/{project_id}/stt", tags=["stt"], dependencies=[Depends(get_current_user), Depends(verify_project_ownership)])
 
 MAX_AUDIO_SIZE = 25 * 1024 * 1024  # 25 MB
 

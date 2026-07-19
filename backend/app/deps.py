@@ -1,9 +1,10 @@
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
+from app.models.project import Project
 from app.models.user import User
 
 
@@ -21,14 +22,14 @@ async def get_current_user(
 
     import httpx
 
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            f"{settings.supabase_url}/auth/v1/user",
-            headers={
-                "Authorization": f"Bearer {token}",
-                "apikey": settings.supabase_anon_key,
-            },
-        )
+    client = await _get_http_client()
+    resp = await client.get(
+        f"{settings.supabase_url}/auth/v1/user",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "apikey": settings.supabase_anon_key,
+        },
+    )
 
     if resp.status_code != 200:
         raise HTTPException(
@@ -61,3 +62,29 @@ async def get_current_user(
         await db.refresh(user)
 
     return user
+
+
+_http_client: httpx.AsyncClient | None = None
+
+
+async def _get_http_client() -> httpx.AsyncClient:
+    global _http_client
+    if _http_client is None:
+        _http_client = httpx.AsyncClient(timeout=10.0)
+    return _http_client
+
+
+async def verify_project_ownership(
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    project_id = request.path_params.get("project_id")
+    if not project_id:
+        return
+    result = await db.execute(
+        select(Project).where(Project.id == project_id, Project.user_id == user.id)
+    )
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")

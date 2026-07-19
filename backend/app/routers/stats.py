@@ -3,7 +3,7 @@ from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.deps import get_current_user
+from app.deps import get_current_user, verify_project_ownership
 from app.models.material import Material
 from app.models.message import Message
 from app.models.module import Module, ModulePoint
@@ -12,7 +12,7 @@ from app.models.project import Project
 from app.schemas.stats import ProjectStats
 from app.services.rag import client as chroma_client
 
-router = APIRouter(prefix="/projects/{project_id}/stats", tags=["stats"], dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/projects/{project_id}/stats", tags=["stats"], dependencies=[Depends(get_current_user), Depends(verify_project_ownership)])
 
 
 @router.get("", response_model=ProjectStats)

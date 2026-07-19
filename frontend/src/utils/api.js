@@ -1,7 +1,7 @@
 const BASE = import.meta.env.VITE_API_URL || "http://localhost:8999";
+import { supabase } from "@/lib/supabase";
 
 async function getAccessToken() {
-  const { supabase } = await import("@/lib/supabase");
   const { data } = await supabase.auth.getSession();
   return data?.session?.access_token || null;
 }

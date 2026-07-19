@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { useSession } from "@/hooks/useSession";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, MailCheck } from "lucide-react";
 
 export default function AuthPage() {
 	const navigate = useNavigate();
@@ -14,6 +14,7 @@ export default function AuthPage() {
 	const [form, setForm] = useState({ name: "", email: "", password: "" });
 	const [error, setError] = useState("");
 	const [submitting, setSubmitting] = useState(false);
+	const [confirmed, setConfirmed] = useState(false);
 
 	if (user) {
 		navigate("/dashboard");
@@ -29,13 +30,17 @@ export default function AuthPage() {
 		setSubmitting(true);
 		try {
 			if (mode === "signup") {
-				const { error } = await supabase.auth.signUp({
+				const { data, error } = await supabase.auth.signUp({
 					email: form.email,
 					password: form.password,
 					options: { data: { full_name: form.name } },
 				});
 				if (error) throw error;
-				navigate("/dashboard");
+				if (data.session) {
+					navigate("/dashboard");
+				} else {
+					setConfirmed(true);
+				}
 			} else {
 				const { error } = await supabase.auth.signInWithPassword({
 					email: form.email,
@@ -49,6 +54,26 @@ export default function AuthPage() {
 		} finally {
 			setSubmitting(false);
 		}
+	}
+
+	if (confirmed) {
+		return (
+			<div className="flex min-h-screen items-center justify-center bg-background px-4">
+				<div className="w-full max-w-md rounded-2xl border-2 border-black bg-card p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-center">
+					<div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-emerald-100">
+						<MailCheck className="size-6 text-emerald-600" />
+					</div>
+					<h1 className="font-head text-2xl font-extrabold tracking-tight">
+						Check your email
+					</h1>
+					<p className="mt-2 text-sm text-muted-foreground">
+						We sent a confirmation link to{" "}
+						<span className="font-medium text-foreground">{form.email}</span>.
+						Click it to activate your account, then sign in.
+					</p>
+				</div>
+			</div>
+		);
 	}
 
 	return (
