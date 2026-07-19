@@ -11,8 +11,6 @@ __all__ = [
     "ModulePoint",
     "Material",
     "Resource",
-    "Rubric",
-    "RubricPoint",
     "Message",
     "CanvasScene",
 ]
