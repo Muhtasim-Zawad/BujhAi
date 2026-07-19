@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
+from app.deps import get_current_user
 from app.models.material import Material
 from app.models.module import Module, ModulePoint
 from app.models.project import Project
@@ -16,7 +17,7 @@ from app.services.generator import generate_from_materials
 from app.services.rag import delete_material, ingest_text
 from app.utils import nanoid
 
-router = APIRouter(prefix="/projects/{project_id}/materials", tags=["materials"])
+router = APIRouter(prefix="/projects/{project_id}/materials", tags=["materials"], dependencies=[Depends(get_current_user)])
 
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
 ALLOWED_MIME_TYPES = {

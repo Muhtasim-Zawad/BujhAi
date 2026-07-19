@@ -1,6 +1,6 @@
 import datetime
 
-from sqlalchemy import String, Text, func
+from sqlalchemy import ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -10,6 +10,7 @@ class Project(Base):
     __tablename__ = "projects"
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     title: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str] = mapped_column(Text, default="")
     badge: Mapped[str] = mapped_column(String, default="New")
@@ -22,6 +23,7 @@ class Project(Base):
         server_default=func.now(), onupdate=func.now()
     )
 
+    user = relationship("User", back_populates="projects")
     modules = relationship("Module", back_populates="project", cascade="all, delete-orphan")
     materials = relationship("Material", back_populates="project", cascade="all, delete-orphan")
     messages = relationship("Message", back_populates="project", cascade="all, delete-orphan")

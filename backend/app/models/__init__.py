@@ -4,6 +4,7 @@ from app.models.material import Material
 from app.models.resource import Resource
 from app.models.message import Message
 from app.models.canvas_scene import CanvasScene
+from app.models.user import User
 
 __all__ = [
     "Project",
@@ -13,4 +14,5 @@ __all__ = [
     "Resource",
     "Message",
     "CanvasScene",
+    "User",
 ]

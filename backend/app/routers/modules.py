@@ -3,8 +3,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
+from app.deps import get_current_user
 from app.models.module import Module, ModulePoint
 from app.models.project import Project
+from app.models.user import User
 from app.schemas.module import (
     ModuleCreate,
     ModulePointCreate,
@@ -16,7 +18,7 @@ from app.schemas.module import (
 from app.utils import nanoid
 from fastapi import APIRouter, Depends, HTTPException, status
 
-router = APIRouter(prefix="/projects/{project_id}/modules", tags=["modules"])
+router = APIRouter(prefix="/projects/{project_id}/modules", tags=["modules"], dependencies=[Depends(get_current_user)])
 
 
 _BASE = select(Module).options(selectinload(Module.points))
