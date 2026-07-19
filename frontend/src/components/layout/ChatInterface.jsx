@@ -130,9 +130,8 @@ export default function ChatInterface({ projectId }) {
 		});
 	}, []);
 
-	const onRubricUpdate = useCallback((updates) => {
-		window.__rubricUpdates = updates;
-		window.dispatchEvent(new CustomEvent("rubric-update", { detail: updates }));
+	const onModuleUpdate = useCallback((updates) => {
+		window.dispatchEvent(new CustomEvent("module-update", { detail: updates }));
 	}, []);
 
 	const onStudentStart = useCallback(() => {
@@ -217,7 +216,7 @@ export default function ChatInterface({ projectId }) {
 				{
 					onEvaluatorStart,
 					onText,
-					onRubricUpdate,
+					onModuleUpdate,
 					onStudentStart,
 					onFinish,
 					onError,

@@ -4,7 +4,7 @@ const BASE = import.meta.env.VITE_API_URL || "http://localhost:8999";
  * Stream a chat message via SSE.
  * @param {string} projectId
  * @param {string} message
- * @param {object} callbacks - { onEvaluatorStart, onText, onRubricUpdate, onStudentStart, onFinish, onError }
+ * @param {object} callbacks - { onEvaluatorStart, onText, onModuleUpdate, onStudentStart, onFinish, onError }
  * @param {string|null} canvasData - optional serialized Excalidraw scene JSON
  */
 export async function streamChat(projectId, message, callbacks, canvasData = null) {
@@ -49,7 +49,7 @@ export async function streamChat(projectId, message, callbacks, canvasData = nul
             callbacks.onText?.(data.text);
             break;
           case "module_update":
-            callbacks.onRubricUpdate?.(data.updates);
+            callbacks.onModuleUpdate?.(data.updates);
             break;
           case "student_start":
             callbacks.onStudentStart?.();

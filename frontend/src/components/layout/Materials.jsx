@@ -5,8 +5,23 @@ import {
 	Trash2,
 	FileText,
 	Loader2,
+	Plus,
+	Edit3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import {
+	Accordion,
+	AccordionItem,
+	AccordionTrigger,
+	AccordionContent,
+} from "@/components/ui/accordion";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+	Progress,
+	ProgressLabel,
+	ProgressValue,
+} from "@/components/ui/progress";
 import {
 	Empty,
 	EmptyHeader,
@@ -29,17 +44,30 @@ import {
 	fetchMaterials,
 	uploadMaterial,
 	deleteMaterial,
+	fetchModules,
+	createModule,
+	updateModule,
+	deleteModule,
+	createModulePoint,
+	updateModulePoint,
+	deleteModulePoint,
 } from "@/utils/api";
 
 export default function Materials({ projectId }) {
 	const [materials, setMaterials] = useState([]);
+	const [modules, setModules] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [uploading, setUploading] = useState(false);
+	const [editingModuleId, setEditingModuleId] = useState(null);
+	const [editingTitle, setEditingTitle] = useState("");
 	const fileInputRef = useRef(null);
 
 	useEffect(() => {
 		if (!projectId) return;
-		fetchMaterials(projectId).then(setMaterials).catch(() => {}).finally(() => setLoading(false));
+		Promise.all([
+			fetchMaterials(projectId).then(setMaterials).catch(() => {}),
+			fetchModules(projectId).then(setModules).catch(() => {}),
+		]).finally(() => setLoading(false));
 	}, [projectId]);
 
 	async function handleUpload() {
@@ -76,6 +104,116 @@ export default function Materials({ projectId }) {
 		}
 	}
 
+	const totalModulePoints = modules.reduce((sum, m) => sum + (m.points?.length || 0), 0);
+	const checkedModulePoints = modules.reduce(
+		(sum, m) => sum + (m.points || []).filter((p) => p.checked).length, 0,
+	);
+	const moduleGlobalProgress = totalModulePoints > 0 ? Math.round((checkedModulePoints / totalModulePoints) * 100) : 0;
+
+	async function addModule() {
+		try {
+			const created = await createModule(projectId, `Module ${modules.length + 1}`);
+			setModules((prev) => [...prev, created]);
+		} catch (err) {
+			console.error("Create module failed:", err);
+		}
+	}
+
+	async function deleteModuleLocal(id) {
+		try {
+			await deleteModule(projectId, id);
+			setModules((prev) => prev.filter((m) => m.id !== id));
+		} catch (err) {
+			console.error("Delete module failed:", err);
+		}
+	}
+
+	async function renameModule() {
+		if (!editingModuleId) return;
+		try {
+			const updated = await updateModule(projectId, editingModuleId, editingTitle);
+			setModules((prev) => prev.map((m) => (m.id === editingModuleId ? updated : m)));
+			setEditingModuleId(null);
+			setEditingTitle("");
+		} catch (err) {
+			console.error("Rename module failed:", err);
+		}
+	}
+
+	function startEditing(mod) {
+		setEditingModuleId(mod.id);
+		setEditingTitle(mod.title);
+	}
+
+	async function addPoint(moduleId) {
+		try {
+			const created = await createModulePoint(projectId, moduleId, "New point");
+			setModules((prev) =>
+				prev.map((m) =>
+					m.id === moduleId ? { ...m, points: [...(m.points || []), created] } : m,
+				),
+			);
+		} catch (err) {
+			console.error("Add point failed:", err);
+		}
+	}
+
+	async function deletePointLocal(moduleId, pointId) {
+		try {
+			await deleteModulePoint(projectId, moduleId, pointId);
+			setModules((prev) =>
+				prev.map((m) =>
+					m.id === moduleId
+						? { ...m, points: (m.points || []).filter((p) => p.id !== pointId) }
+						: m,
+				),
+			);
+		} catch (err) {
+			console.error("Delete point failed:", err);
+		}
+	}
+
+	async function togglePoint(moduleId, pointId) {
+		const mod = modules.find((m) => m.id === moduleId);
+		const point = mod?.points?.find((p) => p.id === pointId);
+		if (!point) return;
+		try {
+			const updated = await updateModulePoint(projectId, moduleId, pointId, {
+				checked: !point.checked,
+			});
+			setModules((prev) =>
+				prev.map((m) =>
+					m.id === moduleId
+						? { ...m, points: (m.points || []).map((p) => (p.id === pointId ? updated : p)) }
+						: m,
+				),
+			);
+		} catch (err) {
+			console.error("Toggle point failed:", err);
+		}
+	}
+
+	async function updatePointText(moduleId, pointId, text) {
+		try {
+			const updated = await updateModulePoint(projectId, moduleId, pointId, { text });
+			setModules((prev) =>
+				prev.map((m) =>
+					m.id === moduleId
+						? { ...m, points: (m.points || []).map((p) => (p.id === pointId ? updated : p)) }
+						: m,
+				),
+			);
+		} catch (err) {
+			console.error("Update point failed:", err);
+		}
+	}
+
+	function getModuleProgress(mod) {
+		const pts = mod.points || [];
+		if (pts.length === 0) return 0;
+		return Math.round((pts.filter((p) => p.checked).length / pts.length) * 100);
+	}
+
 	if (loading) {
 		return (
 			<div className="flex h-full items-center justify-center">
@@ -93,8 +231,8 @@ export default function Materials({ projectId }) {
 					</EmptyMedia>
 					<EmptyTitle>Welcome to Materials</EmptyTitle>
 					<EmptyDescription>
-						Upload your learning materials to get AI-generated modules, rubrics, and
-						resources.
+					Upload your learning materials to get AI-generated modules and
+					resources.
 					</EmptyDescription>
 				</EmptyHeader>
 				<EmptyContent className="flex-row justify-center gap-2">
@@ -119,11 +257,11 @@ export default function Materials({ projectId }) {
 	}
 
 	return (
-		<div className="flex flex-col gap-4 p-4 h-full overflow-hidden">
+			<div className="flex flex-col gap-4 p-4 h-full overflow-y-auto">
 			<div className="flex flex-col gap-1">
 				<h1 className="font-head text-2xl tracking-tight">Materials</h1>
 				<p className="text-sm text-muted-foreground">
-					Manage your uploaded learning materials.
+					Upload learning materials and track module progress.
 				</p>
 			</div>
 
@@ -197,7 +335,129 @@ export default function Materials({ projectId }) {
 				</div>
 			</div>
 
+			<Separator />
 
+			<div className="flex-1 overflow-y-auto min-h-0">
+				<Progress value={moduleGlobalProgress} className="mb-4">
+					<ProgressLabel>Module Progress</ProgressLabel>
+					<ProgressValue>{moduleGlobalProgress}%</ProgressValue>
+				</Progress>
+
+				<h2 className="font-head text-base mb-3">Modules</h2>
+
+				{modules.length > 0 ? (
+					<div className="flex flex-col gap-2">
+						{modules.map((mod) => {
+							const progress = getModuleProgress(mod);
+							const pts = mod.points || [];
+							const checkedCount = pts.filter((p) => p.checked).length;
+							return (
+								<Accordion key={mod.id}>
+									<AccordionItem>
+										<AccordionTrigger className="group">
+											<div className="flex flex-1 items-center gap-4">
+												{editingModuleId === mod.id ? (
+													<input
+														value={editingTitle}
+														onChange={(e) => setEditingTitle(e.target.value)}
+														onBlur={renameModule}
+														onKeyDown={(e) => e.key === "Enter" && renameModule()}
+														className="flex-1 bg-transparent text-sm font-head outline-none border-b border-black"
+														autoFocus
+														onClick={(e) => e.stopPropagation()}
+													/>
+												) : (
+													<span className="text-sm font-head">{mod.title}</span>
+												)}
+												<div
+													className="flex items-center gap-1 ml-auto"
+													onClick={(e) => e.stopPropagation()}
+												>
+													<button
+														onClick={() => startEditing(mod)}
+														className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 cursor-pointer"
+													>
+														<Edit3 className="size-3.5" />
+													</button>
+													<button
+														onClick={() => deleteModuleLocal(mod.id)}
+														className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-destructive cursor-pointer"
+													>
+														<Trash2 className="size-3.5" />
+													</button>
+												</div>
+											</div>
+										</AccordionTrigger>
+										<AccordionContent>
+											<div className="flex flex-col gap-3">
+												<div className="relative h-2 w-full overflow-hidden rounded border border-black bg-background">
+													<div
+														className="h-full bg-primary transition-all duration-300"
+														style={{ width: `${progress}%` }}
+													/>
+												</div>
+												<div className="flex justify-between text-xs text-muted-foreground">
+													<span>
+														{checkedCount}/{pts.length} completed
+													</span>
+													<span>{progress}%</span>
+												</div>
+
+												<div className="flex flex-col gap-1.5">
+													{pts.map((point) => (
+														<div key={point.id} className="flex items-center gap-2 group/point">
+															<Checkbox
+																checked={point.checked}
+																onCheckedChange={() => togglePoint(mod.id, point.id)}
+																className="size-4 shrink-0"
+															/>
+															<input
+																value={point.text}
+																onChange={(e) =>
+																	updatePointText(mod.id, point.id, e.target.value)
+																}
+																className="flex-1 bg-transparent text-sm outline-none border-b border-transparent focus:border-black transition-colors"
+															/>
+															<button
+																onClick={() => deletePointLocal(mod.id, point.id)}
+																className="opacity-0 group-hover/point:opacity-100 transition-opacity text-destructive p-0.5 cursor-pointer"
+															>
+																<Trash2 className="size-3" />
+															</button>
+														</div>
+													))}
+												</div>
+
+												<button
+													onClick={() => addPoint(mod.id)}
+													className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+												>
+													<Plus className="size-3" />
+													Add point
+												</button>
+											</div>
+										</AccordionContent>
+									</AccordionItem>
+								</Accordion>
+							);
+						})}
+					</div>
+				) : (
+					<p className="text-sm text-muted-foreground text-center py-4">
+						No modules yet. Upload materials to generate them.
+					</p>
+				)}
+
+				<Button
+					onClick={addModule}
+					variant="outline"
+					size="sm"
+					className="w-full mt-2 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+				>
+					<Plus className="size-4" />
+					Add Module
+				</Button>
+			</div>
 		</div>
 	);
 }

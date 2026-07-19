@@ -31,6 +31,14 @@ export default function ChatRightSidebar({ projectId }) {
 	const [editingModuleId, setEditingModuleId] = useState(null);
 	const [editingTitle, setEditingTitle] = useState("");
 
+	useEffect(() => {
+		const handler = () => {
+			if (!projectId) return;
+			fetchModules(projectId).then(setModules).catch(() => {});
+		};
+		window.addEventListener("module-update", handler);
+		return () => window.removeEventListener("module-update", handler);
+	}, [projectId]);
 
 	useEffect(() => {
 		if (!projectId) return;
