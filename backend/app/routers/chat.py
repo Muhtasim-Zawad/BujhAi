@@ -14,6 +14,7 @@ from app.models.project import Project
 from app.models.module import ModulePoint
 from app.schemas.chat import ChatRequest
 from app.services.agent import stream_chat_agent
+from app.services.excalidraw import parse_scene
 
 router = APIRouter(prefix="/projects/{project_id}/chat", tags=["chat"])
 
@@ -34,9 +35,15 @@ async def chat_stream(
     if not project:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
+    canvas_text = ""
     metadata = {}
     if body.canvas_data:
         metadata["canvas_data"] = body.canvas_data
+        try:
+            elements = json.loads(body.canvas_data)
+            canvas_text = parse_scene(elements)
+        except (json.JSONDecodeError, Exception):
+            canvas_text = body.canvas_data
 
     user_msg = Message(
         project_id=project_id,
@@ -85,7 +92,7 @@ async def chat_stream(
         full_response = ""
         try:
             async for token_json in stream_chat_agent(
-                project_id, history, body.message, modules_data, body.canvas_data,
+                project_id, history, body.message, modules_data, canvas_text,
             ):
                 yield f"data: {token_json}\n\n"
                 data = json.loads(token_json)
