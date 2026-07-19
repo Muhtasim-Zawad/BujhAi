@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import init_db
-from app.routers import canvas, chat, materials, modules, projects, resources, rubrics, stats, stt
+from app.routers import canvas, chat, materials, modules, projects, resources, stats, stt
 
 
 @asynccontextmanager
@@ -31,7 +31,6 @@ app.add_middleware(
 app.include_router(projects.router)
 app.include_router(modules.router)
 app.include_router(materials.router)
-app.include_router(rubrics.router)
 app.include_router(stt.router)
 app.include_router(chat.router)
 app.include_router(resources.router)

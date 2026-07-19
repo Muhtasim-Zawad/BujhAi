@@ -7,7 +7,7 @@ from app.models.material import Material
 from app.models.message import Message
 from app.models.module import Module, ModulePoint
 from app.models.project import Project
-from app.models.rubric import Rubric, RubricPoint
+
 from app.schemas.stats import ProjectStats
 from app.services.rag import client as chroma_client
 
@@ -51,24 +51,6 @@ async def get_stats(
     module_points_total = row[0] or 0
     module_points_completed = row[1] or 0
 
-    rubrics = await db.execute(
-        select(func.count(Rubric.id)).where(Rubric.project_id == project_id)
-    )
-    total_rubrics = rubrics.scalar() or 0
-
-    rub_pts = await db.execute(
-        select(
-            func.count(RubricPoint.id),
-            func.sum(case((RubricPoint.checked == True, 1), else_=0)),
-        )
-        .select_from(RubricPoint)
-        .join(Rubric, RubricPoint.rubric_id == Rubric.id)
-        .where(Rubric.project_id == project_id)
-    )
-    row = rub_pts.one()
-    rubric_criteria_total = row[0] or 0
-    rubric_criteria_checked = row[1] or 0
-
     total_chunks = 0
     try:
         col = chroma_client.get_collection(f"project_{project_id}")
@@ -83,7 +65,4 @@ async def get_stats(
         total_modules=total_modules,
         module_points_completed=module_points_completed,
         module_points_total=module_points_total,
-        total_rubrics=total_rubrics,
-        rubric_criteria_checked=rubric_criteria_checked,
-        rubric_criteria_total=rubric_criteria_total,
     )

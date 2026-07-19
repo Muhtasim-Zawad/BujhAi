@@ -15,5 +15,4 @@ class MaterialResponse(BaseModel):
 class UploadResponse(BaseModel):
     material: MaterialResponse
     generated_modules: list[dict] | None = None
-    generated_rubrics: list[dict] | None = None
     generated_resources: list[dict] | None = None

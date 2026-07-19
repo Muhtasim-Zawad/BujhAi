@@ -10,7 +10,7 @@ from app.models.material import Material
 from app.models.module import Module, ModulePoint
 from app.models.project import Project
 from app.models.resource import Resource
-from app.models.rubric import Rubric, RubricPoint
+
 from app.schemas.material import MaterialResponse, UploadResponse
 from app.services.generator import generate_from_materials
 from app.services.rag import delete_material, ingest_text
@@ -102,7 +102,6 @@ async def upload_material(
     resp = UploadResponse(material=MaterialResponse.model_validate(material))
     if generated:
         resp.generated_modules = generated.get("modules")
-        resp.generated_rubrics = generated.get("rubrics")
         resp.generated_resources = generated.get("resources")
 
     return resp
@@ -134,10 +133,6 @@ async def delete_material_route(
             ModulePoint.module_id.in_(select(Module.id).where(Module.project_id == project_id))
         ))
         await db.execute(delete(Module).where(Module.project_id == project_id))
-        await db.execute(delete(RubricPoint).where(
-            RubricPoint.rubric_id.in_(select(Rubric.id).where(Rubric.project_id == project_id))
-        ))
-        await db.execute(delete(Rubric).where(Rubric.project_id == project_id))
         await db.execute(delete(Resource).where(Resource.project_id == project_id))
         await db.commit()
 

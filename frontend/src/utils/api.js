@@ -48,7 +48,7 @@ export async function streamChat(projectId, message, callbacks, canvasData = nul
           case "text":
             callbacks.onText?.(data.text);
             break;
-          case "rubric_update":
+          case "module_update":
             callbacks.onRubricUpdate?.(data.updates);
             break;
           case "student_start":
@@ -159,68 +159,6 @@ export async function deleteMaterial(projectId, materialId) {
     method: "DELETE",
   });
   if (!res.ok) throw new Error(`Delete failed: HTTP ${res.status}`);
-}
-
-// ---- Rubrics ----
-
-export async function fetchRubrics(projectId) {
-  const res = await fetch(`${BASE}/projects/${projectId}/rubrics`);
-  if (!res.ok) return [];
-  return res.json();
-}
-
-export async function createRubric(projectId, title) {
-  const res = await fetch(`${BASE}/projects/${projectId}/rubrics`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ title }),
-  });
-  if (!res.ok) throw new Error(`Create rubric failed: HTTP ${res.status}`);
-  return res.json();
-}
-
-export async function updateRubric(projectId, rubricId, title) {
-  const res = await fetch(`${BASE}/projects/${projectId}/rubrics/${rubricId}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ title }),
-  });
-  if (!res.ok) throw new Error(`Update rubric failed: HTTP ${res.status}`);
-  return res.json();
-}
-
-export async function deleteRubric(projectId, rubricId) {
-  const res = await fetch(`${BASE}/projects/${projectId}/rubrics/${rubricId}`, {
-    method: "DELETE",
-  });
-  if (!res.ok) throw new Error(`Delete rubric failed: HTTP ${res.status}`);
-}
-
-export async function createRubricPoint(projectId, rubricId, text) {
-  const res = await fetch(`${BASE}/projects/${projectId}/rubrics/${rubricId}/points`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text }),
-  });
-  if (!res.ok) throw new Error(`Create point failed: HTTP ${res.status}`);
-  return res.json();
-}
-
-export async function updateRubricPoint(projectId, rubricId, pointId, data) {
-  const res = await fetch(`${BASE}/projects/${projectId}/rubrics/${rubricId}/points/${pointId}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error(`Update point failed: HTTP ${res.status}`);
-  return res.json();
-}
-
-export async function deleteRubricPoint(projectId, rubricId, pointId) {
-  const res = await fetch(`${BASE}/projects/${projectId}/rubrics/${rubricId}/points/${pointId}`, {
-    method: "DELETE",
-  });
-  if (!res.ok) throw new Error(`Delete point failed: HTTP ${res.status}`);
 }
 
 // ---- Modules ----

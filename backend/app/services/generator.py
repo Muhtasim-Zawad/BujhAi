@@ -7,36 +7,32 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.module import Module, ModulePoint
 from app.models.resource import Resource
-from app.models.rubric import Rubric, RubricPoint
+
 from app.services.rag import search as rag_search
 from app.utils import nanoid
 
-_GENERATION_PROMPT = """You are a curriculum designer. Based on the following learning material, suggest modules (topics to cover), evaluation rubrics (grading criteria), and learning resources.
+_GENERATION_PROMPT = """You are a curriculum designer. Based on the following learning material, suggest modules (topics to cover) and learning resources.
 
 Rules:
-- Modules represent logical sections of the material. Each module should have 2-4 checklist points describing what the learner should know.
-- Rubrics are evaluation criteria with standards. Each rubric should have 2-4 standards describing mastery levels.
-- Points and standards should be concrete and measurable.
+- Modules represent logical sections of the material. Each module should have 2-4 points that serve as both checklist items and evaluation criteria describing what the learner should know.
+- Points should be concrete and measurable, suitable for assessing understanding.
 - Resources should be practical learning aids the student can use. Generate 2-4 resources.
 - resource_type must be one of: "youtube_video", "online_tutorial", "roadmap"
-  - youtube_video: a real YouTube video title the student should search for
-  - online_tutorial: a real website/tutorial name the student should visit
+  - youtube_video: provide an actual YouTube URL the student can open
+  - online_tutorial: provide an actual URL to the website/tutorial
   - roadmap: a suggested study order for which topic to learn after which
-- For content in resources: if it's a youtube_video or online_tutorial, provide a real searchable title or URL suggestion. If it's a roadmap, describe the suggested learning path.
+- For content in resources: if it's a youtube_video or online_tutorial, provide the full URL. If it's a roadmap, describe the suggested learning path.
 - Use the actual content of the material — don't invent topics not covered.
 - Output ONLY valid JSON, no markdown or extra text.
 
 Respond in this exact JSON format:
 {
   "modules": [
-    {"title": "Module name", "points": [{"text": "Checklist item"}]}
-  ],
-  "rubrics": [
-    {"title": "Criteria name", "points": [{"text": "Standard description"}]}
+    {"title": "Module name", "points": [{"text": "Checklist item / evaluation criterion"}]}
   ],
   "resources": [
-    {"title": "Resource title", "content": "Search term or URL or description", "resource_type": "youtube_video"},
-    {"title": "Resource title", "content": "Website name or URL", "resource_type": "online_tutorial"},
+    {"title": "Resource title", "content": "URL or description", "url": "https://...", "resource_type": "youtube_video"},
+    {"title": "Resource title", "content": "URL or description", "url": "https://...", "resource_type": "online_tutorial"},
     {"title": "Study Roadmap", "content": "Study this first, then this, then this...", "resource_type": "roadmap"}
   ]
 }"""
@@ -84,15 +80,7 @@ async def generate_from_materials(
         await db.execute(delete(ModulePoint).where(ModulePoint.module_id.in_(module_ids)))
     await db.execute(delete(Module).where(Module.project_id == project_id))
 
-    # --- Rubrics: delete old + recreate ---
-    result = await db.execute(select(Rubric.id).where(Rubric.project_id == project_id))
-    rubric_ids = [row[0] for row in result]
-    if rubric_ids:
-        await db.execute(delete(RubricPoint).where(RubricPoint.rubric_id.in_(rubric_ids)))
-    await db.execute(delete(Rubric).where(Rubric.project_id == project_id))
-
     modules_data = parsed.get("modules") or []
-    rubrics_data = parsed.get("rubrics") or []
     resources_data = parsed.get("resources") or []
 
     # --- Create modules ---
@@ -131,42 +119,6 @@ async def generate_from_materials(
             "points": module_points,
         })
 
-    # --- Create rubrics ---
-    created_rubrics = []
-    for i, rd in enumerate(rubrics_data):
-        rubric = Rubric(
-            id=nanoid(),
-            project_id=project_id,
-            title=rd.get("title", f"Criteria {i + 1}"),
-            sort_order=i + 1,
-        )
-        db.add(rubric)
-        await db.flush()
-        points_data = rd.get("points") or []
-        rubric_points = []
-        for j, pd in enumerate(points_data):
-            point = RubricPoint(
-                id=nanoid(),
-                rubric_id=rubric.id,
-                text=pd.get("text", ""),
-                sort_order=j + 1,
-            )
-            db.add(point)
-            rubric_points.append({
-                "id": point.id,
-                "rubric_id": rubric.id,
-                "text": point.text,
-                "checked": False,
-                "sort_order": point.sort_order,
-            })
-        created_rubrics.append({
-            "id": rubric.id,
-            "project_id": rubric.project_id,
-            "title": rubric.title,
-            "sort_order": rubric.sort_order,
-            "points": rubric_points,
-        })
-
     # --- Append resources (no delete) ---
     count_result = await db.execute(
         select(Resource).where(Resource.project_id == project_id).order_by(Resource.sort_order.desc()).limit(1)
@@ -182,6 +134,7 @@ async def generate_from_materials(
             project_id=project_id,
             title=rd.get("title", f"Resource {i + 1}"),
             content=rd.get("content", ""),
+            url=rd.get("url"),
             resource_type=rtype,
             source_material_id=source_material_id,
             sort_order=next_sort + i,
@@ -192,6 +145,7 @@ async def generate_from_materials(
             "project_id": resource.project_id,
             "title": resource.title,
             "content": resource.content,
+            "url": resource.url,
             "resource_type": resource.resource_type,
             "sort_order": resource.sort_order,
             "source_material_id": resource.source_material_id,
@@ -200,7 +154,6 @@ async def generate_from_materials(
     await db.commit()
     return {
         "modules": created_modules,
-        "rubrics": created_rubrics,
         "resources": created_resources,
     }
 

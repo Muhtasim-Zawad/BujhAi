@@ -15,6 +15,7 @@ class Resource(Base):
     )
     title: Mapped[str] = mapped_column(String, nullable=False)
     content: Mapped[str] = mapped_column(String, nullable=False)
+    url: Mapped[str | None] = mapped_column(String, nullable=True)
     resource_type: Mapped[str] = mapped_column(String, nullable=False)
     source_material_id: Mapped[str | None] = mapped_column(
         String, ForeignKey("materials.id", ondelete="SET NULL"), nullable=True

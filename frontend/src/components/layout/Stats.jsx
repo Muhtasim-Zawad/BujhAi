@@ -117,18 +117,7 @@ export default function Stats({ projectId }) {
 							</p>
 						</CardContent>
 					</Card>
-					<Card>
-						<CardHeader>
-							<CardTitle>Rubrics</CardTitle>
-							<CardDescription>{stats.total_rubrics} defined</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<p className="text-sm text-muted-foreground">
-								{stats.rubric_criteria_checked} / {stats.rubric_criteria_total} criteria checked.
-							</p>
-						</CardContent>
-					</Card>
-				</div>
+					</div>
 			)}
 
 			{section === "modules" && (

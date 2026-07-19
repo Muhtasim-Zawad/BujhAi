@@ -11,7 +11,7 @@ from app.database import async_session, get_db
 from app.models.message import Message
 from app.models.module import Module
 from app.models.project import Project
-from app.models.rubric import Rubric, RubricPoint
+from app.models.module import ModulePoint
 from app.schemas.chat import ChatRequest
 from app.services.agent import stream_chat_agent
 
@@ -81,39 +81,20 @@ async def chat_stream(
         for m in mod_result.scalars().all()
     ]
 
-    rub_result = await db.execute(
-        select(Rubric)
-        .options(selectinload(Rubric.points))
-        .where(Rubric.project_id == project_id)
-        .order_by(Rubric.sort_order)
-    )
-    rubrics_data = [
-        {
-            "id": r.id,
-            "title": r.title,
-            "points": [
-                {"id": p.id, "text": p.text, "checked": p.checked, "sort_order": p.sort_order}
-                for p in r.points
-            ],
-            "sort_order": r.sort_order,
-        }
-        for r in rub_result.scalars().all()
-    ]
-
     async def event_generator():
         full_response = ""
         try:
             async for token_json in stream_chat_agent(
-                project_id, history, body.message, modules_data, rubrics_data, body.canvas_data,
+                project_id, history, body.message, modules_data, body.canvas_data,
             ):
                 yield f"data: {token_json}\n\n"
                 data = json.loads(token_json)
                 if data.get("type") == "text":
                     full_response += data["text"]
-                elif data.get("type") == "rubric_update":
+                elif data.get("type") == "module_update":
                     async with async_session() as save_db:
                         for update in data["updates"]:
-                            point = await save_db.get(RubricPoint, update["point_id"])
+                            point = await save_db.get(ModulePoint, update["point_id"])
                             if point:
                                 point.checked = update["checked"]
                         await save_db.commit()

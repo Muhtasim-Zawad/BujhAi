@@ -26,20 +26,19 @@ def _get_chat() -> ChatGroq:
     return _chat
 
 
-EVALUATOR_SYSTEM = """You are an evaluator assessing a student's answer against rubric criteria.
+EVALUATOR_SYSTEM = """You are an evaluator. Your role is to explain concepts from the learning materials, provide detailed feedback on the student's understanding, and track their progress against module checklist points. Keep responses encouraging and specific.
 
-Given the rubric criteria and the student's answer, determine which criteria are satisfied.
 Respond ONLY with valid JSON — no markdown, no extra text:
 {
-  "evaluation_text": "Your assessment of the student's answer...",
-  "rubric_updates": [
-    {"rubric_id": "...", "point_id": "...", "checked": true}
+  "evaluation_text": "Your explanation and feedback...",
+  "module_updates": [
+    {"module_id": "...", "point_id": "...", "checked": true}
   ]
 }
-- Set checked=true if the answer demonstrates that criterion
+- Set checked=true if the answer demonstrates that point
 - Set checked=false if it does NOT
-- Only include criteria that are directly relevant to the answer
-- The evaluation_text should be encouraging and specific"""
+- Only include points that are directly relevant to the answer
+- The evaluation_text should explain concepts and give encouraging feedback"""
 
 STUDENT_SYSTEM = """You are a friendly tutor. Your role is to teach the user based on the learning materials.
 
@@ -58,10 +57,9 @@ class AgentState(TypedDict):
     needs_rag: bool
     context_chunks: list[dict]
     modules_json: str
-    rubrics_json: str
     canvas_data: str
     evaluator_response: str
-    rubric_updates: list[dict]
+    module_updates: list[dict]
     student_response: str
 
 
@@ -91,18 +89,6 @@ def _format_core_context(state: AgentState) -> str:
             for c in chunks
         )
         parts.append(f"--- Materials ---\n{context_text}")
-
-    rubrics_raw = state.get("rubrics_json") or "[]"
-    try:
-        rubrics = json.loads(rubrics_raw)
-        if rubrics:
-            parts.append("--- Rubric Progress ---")
-            for r in rubrics:
-                pts = r.get("points", [])
-                checked_count = sum(1 for p in pts if p.get("checked"))
-                parts.append(f"{r['title']}: {checked_count}/{len(pts)} criteria met")
-    except (json.JSONDecodeError, KeyError):
-        pass
 
     canvas_raw = state.get("canvas_data") or ""
     if canvas_raw:
@@ -141,25 +127,25 @@ Student's message to evaluate:
     raw = response.content or "{}"
     parsed = _parse_json(raw)
     eval_text = (parsed or {}).get("evaluation_text", "")
-    updates = (parsed or {}).get("rubric_updates", [])
+    updates = (parsed or {}).get("module_updates", [])
 
     return {
         "evaluator_response": eval_text,
-        "rubric_updates": updates,
+        "module_updates": updates,
     }
 
 
 async def student_node(state: AgentState) -> dict:
     context = _format_core_context(state)
-    rubric_summary = ""
+    module_summary = ""
     try:
-        updates = state.get("rubric_updates") or []
+        updates = state.get("module_updates") or []
         if updates:
-            rubric_summary = f"\nJust evaluated: {len(updates)} rubric criteria were checked. Adjust your teaching accordingly."
+            module_summary = f"\nJust evaluated: {len(updates)} module points were checked."
     except Exception:
         pass
 
-    messages = [SystemMessage(content=STUDENT_SYSTEM + rubric_summary)]
+    messages = [SystemMessage(content=STUDENT_SYSTEM + module_summary)]
     messages.append(HumanMessage(
         content=f"Current material context and progress:\n{context}\n\n"
                 f"Conversation history will follow, then the user's message.\n\n"
@@ -216,7 +202,6 @@ async def stream_chat_agent(
     messages: list[dict],
     user_input: str,
     modules_data: list[dict] | None = None,
-    rubrics_data: list[dict] | None = None,
     canvas_data: str | None = None,
 ) -> AsyncGenerator[str, None]:
     config = {"configurable": {"thread_id": project_id}}
@@ -230,10 +215,9 @@ async def stream_chat_agent(
             "needs_rag": False,
             "context_chunks": [],
             "modules_json": json.dumps(modules_data or []),
-            "rubrics_json": json.dumps(rubrics_data or []),
             "canvas_data": canvas_data or "",
             "evaluator_response": "",
-            "rubric_updates": [],
+            "module_updates": [],
             "student_response": "",
         },
         config,
@@ -245,12 +229,12 @@ async def stream_chat_agent(
         if kind == "on_chain_end" and name == "evaluate":
             output = event["data"].get("output", {})
             eval_text = output.get("evaluator_response", "")
-            updates = output.get("rubric_updates", [])
+            updates = output.get("module_updates", [])
             yield json.dumps({"type": "evaluator_start"})
             if eval_text:
                 yield json.dumps({"type": "text", "text": eval_text})
             if updates:
-                yield json.dumps({"type": "rubric_update", "updates": updates})
+                yield json.dumps({"type": "module_update", "updates": updates})
             yield json.dumps({"type": "student_start"})
             evaluator_done = True
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ChevronRight, Plus, Trash2, Edit3, CheckCircle2 } from "lucide-react";
+import { ChevronRight, Plus, Trash2, Edit3 } from "lucide-react";
 import {
 	Accordion,
 	AccordionItem,
@@ -12,8 +12,8 @@ import {
 	ProgressLabel,
 	ProgressValue,
 } from "@/components/ui/progress";
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
 	fetchModules,
@@ -30,7 +30,7 @@ export default function ChatRightSidebar({ projectId }) {
 	const [modules, setModules] = useState([]);
 	const [editingModuleId, setEditingModuleId] = useState(null);
 	const [editingTitle, setEditingTitle] = useState("");
-	const [rubricProgress, setRubricProgress] = useState({ checked: 0, total: 0 });
+
 
 	useEffect(() => {
 		if (!projectId) return;
@@ -50,15 +50,7 @@ export default function ChatRightSidebar({ projectId }) {
 		};
 	}, [projectId]);
 
-	useEffect(() => {
-		const handler = (e) => {
-			const updates = e.detail || [];
-			const checked = updates.filter((u) => u.checked).length;
-			setRubricProgress({ checked, total: updates.length });
-		};
-		window.addEventListener("rubric-update", handler);
-		return () => window.removeEventListener("rubric-update", handler);
-	}, []);
+
 
 	const totalPoints = modules.reduce((sum, m) => sum + (m.points?.length || 0), 0);
 	const checkedPoints = modules.reduce(
@@ -225,17 +217,7 @@ export default function ChatRightSidebar({ projectId }) {
 						<ProgressValue>{globalProgress}%</ProgressValue>
 					</Progress>
 
-					{rubricProgress.total > 0 && (
-						<div className="flex items-center gap-2 rounded-lg border border-black/20 bg-purple-50 px-3 py-2">
-							<CheckCircle2 className="size-4 text-purple-600" />
-							<div className="flex flex-1 items-center justify-between text-xs">
-								<span className="font-medium text-purple-700">Rubric Criteria</span>
-								<span className="text-purple-600">
-									{rubricProgress.checked}/{rubricProgress.total}
-								</span>
-							</div>
-						</div>
-					)}
+
 
 					{modules.length > 0 ? (
 						<div className="flex flex-col gap-2">

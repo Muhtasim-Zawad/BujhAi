@@ -8,6 +8,7 @@ class ResourceResponse(BaseModel):
     project_id: str
     title: str
     content: str
+    url: str | None = None
     resource_type: str
     sort_order: int
     created_at: datetime.datetime
