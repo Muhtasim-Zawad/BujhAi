@@ -65,8 +65,12 @@ export default function Materials({ projectId }) {
 	useEffect(() => {
 		if (!projectId) return;
 		Promise.all([
-			fetchMaterials(projectId).then(setMaterials).catch(() => {}),
-			fetchModules(projectId).then(setModules).catch(() => {}),
+			fetchMaterials(projectId)
+				.then(setMaterials)
+				.catch(() => {}),
+			fetchModules(projectId)
+				.then(setModules)
+				.catch(() => {}),
 		]).finally(() => setLoading(false));
 	}, [projectId]);
 
@@ -84,7 +88,9 @@ export default function Materials({ projectId }) {
 			window.dispatchEvent(new CustomEvent("materials-changed"));
 			if (result.generated_modules?.length) {
 				window.dispatchEvent(
-					new CustomEvent("modules-generated", { detail: result.generated_modules }),
+					new CustomEvent("modules-generated", {
+						detail: result.generated_modules,
+					}),
 				);
 			}
 		} catch (err) {
@@ -104,15 +110,25 @@ export default function Materials({ projectId }) {
 		}
 	}
 
-	const totalModulePoints = modules.reduce((sum, m) => sum + (m.points?.length || 0), 0);
-	const checkedModulePoints = modules.reduce(
-		(sum, m) => sum + (m.points || []).filter((p) => p.checked).length, 0,
+	const totalModulePoints = modules.reduce(
+		(sum, m) => sum + (m.points?.length || 0),
+		0,
 	);
-	const moduleGlobalProgress = totalModulePoints > 0 ? Math.round((checkedModulePoints / totalModulePoints) * 100) : 0;
+	const checkedModulePoints = modules.reduce(
+		(sum, m) => sum + (m.points || []).filter((p) => p.checked).length,
+		0,
+	);
+	const moduleGlobalProgress =
+		totalModulePoints > 0
+			? Math.round((checkedModulePoints / totalModulePoints) * 100)
+			: 0;
 
 	async function addModule() {
 		try {
-			const created = await createModule(projectId, `Module ${modules.length + 1}`);
+			const created = await createModule(
+				projectId,
+				`Module ${modules.length + 1}`,
+			);
 			setModules((prev) => [...prev, created]);
 		} catch (err) {
 			console.error("Create module failed:", err);
@@ -131,8 +147,14 @@ export default function Materials({ projectId }) {
 	async function renameModule() {
 		if (!editingModuleId) return;
 		try {
-			const updated = await updateModule(projectId, editingModuleId, editingTitle);
-			setModules((prev) => prev.map((m) => (m.id === editingModuleId ? updated : m)));
+			const updated = await updateModule(
+				projectId,
+				editingModuleId,
+				editingTitle,
+			);
+			setModules((prev) =>
+				prev.map((m) => (m.id === editingModuleId ? updated : m)),
+			);
 			setEditingModuleId(null);
 			setEditingTitle("");
 		} catch (err) {
@@ -150,7 +172,9 @@ export default function Materials({ projectId }) {
 			const created = await createModulePoint(projectId, moduleId, "New point");
 			setModules((prev) =>
 				prev.map((m) =>
-					m.id === moduleId ? { ...m, points: [...(m.points || []), created] } : m,
+					m.id === moduleId
+						? { ...m, points: [...(m.points || []), created] }
+						: m,
 				),
 			);
 		} catch (err) {
@@ -184,7 +208,12 @@ export default function Materials({ projectId }) {
 			setModules((prev) =>
 				prev.map((m) =>
 					m.id === moduleId
-						? { ...m, points: (m.points || []).map((p) => (p.id === pointId ? updated : p)) }
+						? {
+								...m,
+								points: (m.points || []).map((p) =>
+									p.id === pointId ? updated : p,
+								),
+							}
 						: m,
 				),
 			);
@@ -195,11 +224,18 @@ export default function Materials({ projectId }) {
 
 	async function updatePointText(moduleId, pointId, text) {
 		try {
-			const updated = await updateModulePoint(projectId, moduleId, pointId, { text });
+			const updated = await updateModulePoint(projectId, moduleId, pointId, {
+				text,
+			});
 			setModules((prev) =>
 				prev.map((m) =>
 					m.id === moduleId
-						? { ...m, points: (m.points || []).map((p) => (p.id === pointId ? updated : p)) }
+						? {
+								...m,
+								points: (m.points || []).map((p) =>
+									p.id === pointId ? updated : p,
+								),
+							}
 						: m,
 				),
 			);
@@ -224,15 +260,15 @@ export default function Materials({ projectId }) {
 
 	if (materials.length === 0 && !uploading) {
 		return (
-			<Empty>
+			<Empty className="h-full">
 				<EmptyHeader>
 					<EmptyMedia variant="icon">
 						<BookOpen />
 					</EmptyMedia>
 					<EmptyTitle>Welcome to Materials</EmptyTitle>
 					<EmptyDescription>
-					Upload your learning materials to get AI-generated modules and
-					resources.
+						Upload your learning materials to get AI-generated modules and
+						resources.
 					</EmptyDescription>
 				</EmptyHeader>
 				<EmptyContent className="flex-row justify-center gap-2">
@@ -257,7 +293,7 @@ export default function Materials({ projectId }) {
 	}
 
 	return (
-			<div className="flex flex-col gap-4 p-4 h-full overflow-y-auto">
+		<div className="flex flex-col gap-4 p-4 h-full overflow-y-auto">
 			<div className="flex flex-col gap-1">
 				<h1 className="font-head text-2xl tracking-tight">Materials</h1>
 				<p className="text-sm text-muted-foreground">
@@ -310,7 +346,11 @@ export default function Materials({ projectId }) {
 								</p>
 							</div>
 							<Dialog>
-								<DialogTrigger render={<button className="flex items-center justify-center size-7 rounded-lg border-2 border-black bg-background text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors cursor-pointer shrink-0 shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none" />}>
+								<DialogTrigger
+									render={
+										<button className="flex items-center justify-center size-7 rounded-lg border-2 border-black bg-background text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors cursor-pointer shrink-0 shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none" />
+									}
+								>
 									<Trash2 className="size-3.5" />
 								</DialogTrigger>
 								<DialogContent className="bg-card">
@@ -325,8 +365,22 @@ export default function Materials({ projectId }) {
 										</DialogDescription>
 									</DialogHeader>
 									<DialogFooter>
-										<DialogClose render={<Button variant="outline" size="sm" />}>Cancel</DialogClose>
-										<DialogClose render={<Button variant="destructive" size="sm" onClick={() => removeMaterial(m.id)} />}>Remove</DialogClose>
+										<DialogClose
+											render={<Button variant="outline" size="sm" />}
+										>
+											Cancel
+										</DialogClose>
+										<DialogClose
+											render={
+												<Button
+													variant="destructive"
+													size="sm"
+													onClick={() => removeMaterial(m.id)}
+												/>
+											}
+										>
+											Remove
+										</DialogClose>
 									</DialogFooter>
 								</DialogContent>
 							</Dialog>
@@ -361,7 +415,9 @@ export default function Materials({ projectId }) {
 														value={editingTitle}
 														onChange={(e) => setEditingTitle(e.target.value)}
 														onBlur={renameModule}
-														onKeyDown={(e) => e.key === "Enter" && renameModule()}
+														onKeyDown={(e) =>
+															e.key === "Enter" && renameModule()
+														}
 														className="flex-1 bg-transparent text-sm font-head outline-none border-b border-black"
 														autoFocus
 														onClick={(e) => e.stopPropagation()}
@@ -405,21 +461,32 @@ export default function Materials({ projectId }) {
 
 												<div className="flex flex-col gap-1.5">
 													{pts.map((point) => (
-														<div key={point.id} className="flex items-center gap-2 group/point">
+														<div
+															key={point.id}
+															className="flex items-center gap-2 group/point"
+														>
 															<Checkbox
 																checked={point.checked}
-																onCheckedChange={() => togglePoint(mod.id, point.id)}
+																onCheckedChange={() =>
+																	togglePoint(mod.id, point.id)
+																}
 																className="size-4 shrink-0"
 															/>
 															<input
 																value={point.text}
 																onChange={(e) =>
-																	updatePointText(mod.id, point.id, e.target.value)
+																	updatePointText(
+																		mod.id,
+																		point.id,
+																		e.target.value,
+																	)
 																}
 																className="flex-1 bg-transparent text-sm outline-none border-b border-transparent focus:border-black transition-colors"
 															/>
 															<button
-																onClick={() => deletePointLocal(mod.id, point.id)}
+																onClick={() =>
+																	deletePointLocal(mod.id, point.id)
+																}
 																className="opacity-0 group-hover/point:opacity-100 transition-opacity text-destructive p-0.5 cursor-pointer"
 															>
 																<Trash2 className="size-3" />

@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import {
 	NavigationMenu,
 	NavigationMenuContent,
@@ -16,6 +17,23 @@ import { Separator } from "@/components/ui/separator";
 import { User, Settings, LogOut, BookOpen, Palette } from "lucide-react";
 
 export default function Navbar({ projects = [], onCreateProject, onOpenProject }) {
+	const navigate = useNavigate();
+
+	const raw = localStorage.getItem("bujhai_user");
+	const currentUser = raw ? JSON.parse(raw) : null;
+	const userName = currentUser?.name || "Guest User";
+	const userEmail = currentUser?.email || "guest@bujhai.app";
+	const initials = userName
+		.split(" ")
+		.map((n) => n[0])
+		.join("")
+		.toUpperCase()
+		.slice(0, 2);
+
+	function handleSignOut() {
+		localStorage.removeItem("bujhai_user");
+		navigate("/");
+	}
 	return (
 		<div className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-sm">
 			<div className="mx-auto max-w-6xl p-6">
@@ -97,7 +115,7 @@ export default function Navbar({ projects = [], onCreateProject, onOpenProject }
 								className="border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
 							>
 								<AvatarImage src="" alt="User" />
-								<AvatarFallback>U</AvatarFallback>
+									<AvatarFallback>{initials || "U"}</AvatarFallback>
 							</Avatar>
 						</HoverCardTrigger>
 						<HoverCardContent
@@ -107,12 +125,12 @@ export default function Navbar({ projects = [], onCreateProject, onOpenProject }
 							<div className="flex flex-col gap-2">
 								<div className="flex items-center gap-3 px-1 pt-1">
 									<Avatar size="sm">
-										<AvatarFallback>U</AvatarFallback>
+								<AvatarFallback>{initials || "U"}</AvatarFallback>
 									</Avatar>
 									<div className="flex flex-col">
-										<span className="text-sm font-medium">Guest User</span>
+										<span className="text-sm font-medium">{userName}</span>
 										<span className="text-xs text-muted-foreground">
-											guest@bujhai.app
+											{userEmail}
 										</span>
 									</div>
 								</div>
@@ -126,7 +144,10 @@ export default function Navbar({ projects = [], onCreateProject, onOpenProject }
 									Settings
 								</button>
 								<Separator />
-								<button className="flex w-full items-center gap-2 rounded-sm px-1 py-1.5 text-sm text-destructive transition-colors hover:bg-primary-hover hover:text-primary-foreground">
+								<button
+									onClick={handleSignOut}
+									className="flex w-full items-center gap-2 rounded-sm px-1 py-1.5 text-sm text-destructive transition-colors hover:bg-primary-hover hover:text-primary-foreground cursor-pointer"
+								>
 									<LogOut className="size-4" />
 									Sign Out
 								</button>

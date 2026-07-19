@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "../layout/Navbar";
 import { ProjectCard } from "../layout/ProjectCard";
 import {
@@ -28,7 +29,15 @@ import { cn } from "@/lib/utils";
 import { Plus, Trash2, FolderOpen, BookOpen, BarChart3 } from "lucide-react";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchResources, fetchStats } from "@/utils/api";
+import { fetchProjects, createProject, deleteProject, fetchResources, fetchStats } from "@/utils/api";
+
+function normalizeProject(p) {
+	return {
+		...p,
+		image: p.image_url || `https://avatar.vercel.sh/${p.id}`,
+		buttonText: p.button_text || "Open Project",
+	};
+}
 
 const sections = [
 	{ value: "projects", label: "Projects" },
@@ -36,13 +45,10 @@ const sections = [
 	{ value: "stats", label: "Stats" },
 ];
 
-export default function Dashboard({
-	projects,
-	loading,
-	onCreateProject,
-	onDeleteProject,
-	onOpenProject,
-}) {
+export default function Dashboard() {
+	const navigate = useNavigate();
+	const [projects, setProjects] = useState([]);
+	const [loading, setLoading] = useState(true);
 	const [section, setSection] = useState("projects");
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [newProject, setNewProject] = useState({ title: "", description: "" });
@@ -51,6 +57,13 @@ export default function Dashboard({
 	const [statsMap, setStatsMap] = useState({});
 	const [loadingResources, setLoadingResources] = useState({});
 	const [loadingStats, setLoadingStats] = useState({});
+
+	useEffect(() => {
+		fetchProjects()
+			.then((list) => setProjects(list.map(normalizeProject)))
+			.catch(() => {})
+			.finally(() => setLoading(false));
+	}, []);
 
 	async function loadResources(projectId) {
 		if (resourcesMap[projectId] || loadingResources[projectId]) return;
@@ -76,18 +89,28 @@ export default function Dashboard({
 		setLoadingStats((p) => ({ ...p, [projectId]: false }));
 	}
 
-	function createProject() {
+	async function handleCreate() {
 		if (!newProject.title.trim()) return;
-		onCreateProject?.({
-			title: newProject.title,
-			description: newProject.description,
-		});
+		try {
+			const created = await createProject({
+				title: newProject.title,
+				description: newProject.description,
+			});
+			setProjects((prev) => [...prev, normalizeProject(created)]);
+		} catch (err) {
+			console.error("Create failed:", err);
+		}
 		setNewProject({ title: "", description: "" });
 		setIsCreateOpen(false);
 	}
 
-	function deleteProject(project) {
-		onDeleteProject?.(project.id);
+	async function handleDelete(project) {
+		try {
+			await deleteProject(project.id);
+			setProjects((prev) => prev.filter((p) => p.id !== project.id));
+		} catch (err) {
+			console.error("Delete failed:", err);
+		}
 		setDeletingProject(null);
 	}
 
@@ -96,7 +119,7 @@ export default function Dashboard({
 			<Navbar
 				projects={projects}
 				onCreateProject={() => setIsCreateOpen(true)}
-				onOpenProject={onOpenProject}
+				onOpenProject={(project) => navigate(`/project/${project.id}`)}
 			/>
 			<div className="mx-auto max-w-6xl px-6 py-12">
 				<div className="mb-10">
@@ -164,7 +187,7 @@ export default function Dashboard({
 							<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
 								{projects.map((project) => (
 									<div key={project.id} className="group relative">
-										<ProjectCard {...project} onAction={() => onOpenProject?.(project)} />
+										<ProjectCard {...project} onAction={() => navigate(`/project/${project.id}`)} />
 										<button
 											onClick={() => setDeletingProject(project)}
 											className="absolute top-2 right-2 z-40 cursor-pointer rounded-sm bg-destructive p-1.5 text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
@@ -296,18 +319,7 @@ export default function Dashboard({
 															</CardContent>
 														</CardHeader>
 													</Card>
-													<Card>
-														<CardHeader>
-															<CardTitle>Rubrics</CardTitle>
-															<CardContent className="pt-0 px-0">
-																<p className="text-2xl font-bold">{statsMap[project.id].total_rubrics}</p>
-																<p className="text-xs text-muted-foreground">
-																	{statsMap[project.id].rubric_criteria_checked}/{statsMap[project.id].rubric_criteria_total} criteria
-																</p>
-															</CardContent>
-														</CardHeader>
-													</Card>
-												</div>
+													</div>
 											) : (
 												<p className="py-2 text-center text-sm text-muted-foreground">
 													No stats yet.
@@ -354,7 +366,7 @@ export default function Dashboard({
 						</div>
 						<DialogFooter>
 							<DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-							<DialogClose render={<Button onClick={createProject} />}>Create</DialogClose>
+							<DialogClose render={<Button onClick={handleCreate} />}>Create</DialogClose>
 						</DialogFooter>
 					</DialogContent>
 				</Dialog>
@@ -378,7 +390,7 @@ export default function Dashboard({
 							</DialogHeader>
 							<DialogFooter>
 								<DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-								<DialogClose render={<Button variant="destructive" onClick={() => deleteProject(deletingProject)} />}>Delete</DialogClose>
+								<DialogClose render={<Button variant="destructive" onClick={() => handleDelete(deletingProject)} />}>Delete</DialogClose>
 							</DialogFooter>
 						</DialogContent>
 					)}
