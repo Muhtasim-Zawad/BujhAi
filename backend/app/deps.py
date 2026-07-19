@@ -6,6 +6,7 @@ from app.config import settings
 from app.database import get_db
 from app.models.project import Project
 from app.models.user import User
+import httpx
 
 
 async def get_current_user(
@@ -19,8 +20,6 @@ async def get_current_user(
         )
 
     token = authorization.split(" ", 1)[1]
-
-    import httpx
 
     client = await _get_http_client()
     resp = await client.get(
