@@ -13,7 +13,9 @@ import {
 	AccordionTrigger,
 	AccordionContent,
 } from "@/components/ui/accordion";
+import { Button } from "@/components/ui/button";
 import { fetchStats, fetchResources, fetchModules } from "@/utils/api";
+import { Video, Globe, Map, ExternalLink } from "lucide-react";
 
 export default function Stats({ projectId }) {
 	const [section, setSection] = useState("results");
@@ -160,19 +162,47 @@ export default function Stats({ projectId }) {
 							No resources generated yet. Upload materials first.
 						</p>
 					)}
-					{resources.map((res) => (
-						<AccordionItem key={res.id}>
-							<AccordionTrigger>{res.title}</AccordionTrigger>
-							<AccordionContent>
-								<p className="text-sm">{res.content}</p>
-								{res.resource_type && (
-									<span className="mt-2 inline-block rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-										{res.resource_type.replace(/_/g, " ")}
-									</span>
-								)}
-							</AccordionContent>
-						</AccordionItem>
-					))}
+					{resources.map((res) => {
+						const iconMap = {
+							youtube_video: Video,
+							online_tutorial: Globe,
+							roadmap: Map,
+						};
+						const Icon = iconMap[res.resource_type] || ExternalLink;
+						const hasUrl = res.url && res.url.startsWith("http");
+
+						return (
+							<AccordionItem key={res.id}>
+								<AccordionTrigger className="group">
+									<div className="flex items-center gap-2">
+										<Icon className="size-4 shrink-0 text-muted-foreground" />
+										<span>{res.title}</span>
+									</div>
+								</AccordionTrigger>
+								<AccordionContent>
+									{hasUrl ? (
+										<a
+											href={res.url}
+											target="_blank"
+											rel="noopener noreferrer"
+											className="inline-flex items-center gap-2 rounded-lg border-2 border-black bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-y-0.5 active:translate-y-1 active:shadow-none"
+										>
+											<ExternalLink className="size-4" />
+											Open {res.resource_type === "youtube_video" ? "Video" : "Resource"}
+										</a>
+									) : (
+										<p className="text-sm text-muted-foreground">{res.content}</p>
+									)}
+									{res.resource_type && (
+										<span className="mt-2 inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+											<Icon className="size-3" />
+											{res.resource_type.replace(/_/g, " ")}
+										</span>
+									)}
+								</AccordionContent>
+							</AccordionItem>
+						);
+					})}
 				</Accordion>
 			)}
 		</div>
