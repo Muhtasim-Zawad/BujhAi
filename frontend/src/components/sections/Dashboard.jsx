@@ -34,7 +34,6 @@ import { fetchProjects, createProject, deleteProject, fetchResources, fetchStats
 function normalizeProject(p) {
 	return {
 		...p,
-		image: p.image_url || `https://avatar.vercel.sh/${p.id}`,
 		buttonText: p.button_text || "Open Project",
 	};
 }
