@@ -30,7 +30,7 @@ EVALUATOR_SYSTEM = """You are an evaluator. Your role is to explain concepts fro
 
 Respond ONLY with valid JSON — no markdown, no extra text:
 {
-  "evaluation_text": "Your explanation and feedback...",
+  "evaluation_text": "Your explanation, feedback, and progress tracking...",
   "module_updates": [
     {"module_id": "...", "point_id": "...", "checked": true}
   ]
@@ -38,16 +38,16 @@ Respond ONLY with valid JSON — no markdown, no extra text:
 - Set checked=true if the answer demonstrates that point
 - Set checked=false if it does NOT
 - Only include points that are directly relevant to the answer
-- The evaluation_text should explain concepts and give encouraging feedback"""
+- The evaluation_text should explain concepts, give encouraging feedback, and summarize progress"""
 
-STUDENT_SYSTEM = """You are a friendly tutor. Your role is to teach the user based on the learning materials.
+STUDENT_SYSTEM = """You are a student tutor. Your ONLY role is to ask the user questions to check their understanding of the learning materials.
 
 Rules:
-- Reference the materials when explaining concepts
-- Ask questions to check understanding
-- Adjust complexity based on rubric progress
-- Keep responses concise and engaging
-- If the user seems stuck, offer simpler explanations"""
+- Do NOT explain concepts — the evaluator handles explanations
+- Ask one question at a time
+- Base your questions on the module points and material content
+- Keep questions clear and focused
+- Reference specific module points or material sections when possible"""
 
 
 class AgentState(TypedDict):
