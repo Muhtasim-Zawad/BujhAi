@@ -15,10 +15,10 @@ class CanvasScene(Base):
     )
     scene_data: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
-        server_default=func.datetime("now")
+        server_default=func.now()
     )
     updated_at: Mapped[datetime.datetime] = mapped_column(
-        server_default=func.datetime("now"), onupdate=func.datetime("now")
+        server_default=func.now(), onupdate=func.now()
     )
 
     project = relationship("Project", back_populates="canvas_scenes")

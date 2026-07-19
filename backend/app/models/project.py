@@ -16,10 +16,10 @@ class Project(Base):
     button_text: Mapped[str] = mapped_column(String, default="Open Project")
     image_url: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
-        server_default=func.datetime("now")
+        server_default=func.now()
     )
     updated_at: Mapped[datetime.datetime] = mapped_column(
-        server_default=func.datetime("now"), onupdate=func.datetime("now")
+        server_default=func.now(), onupdate=func.now()
     )
 
     modules = relationship("Module", back_populates="project", cascade="all, delete-orphan")

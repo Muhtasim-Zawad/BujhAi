@@ -16,7 +16,7 @@ class Module(Base):
     title: Mapped[str] = mapped_column(String, nullable=False)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime.datetime] = mapped_column(
-        server_default=func.datetime("now")
+        server_default=func.now()
     )
 
     project = relationship("Project", back_populates="modules")
@@ -34,7 +34,7 @@ class ModulePoint(Base):
     checked: Mapped[bool] = mapped_column(Boolean, default=False)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime.datetime] = mapped_column(
-        server_default=func.datetime("now")
+        server_default=func.now()
     )
 
     module = relationship("Module", back_populates="points")

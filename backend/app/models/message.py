@@ -17,7 +17,7 @@ class Message(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     metadata_json: Mapped[str] = mapped_column(String, default="{}")
     created_at: Mapped[datetime.datetime] = mapped_column(
-        server_default=func.datetime("now")
+        server_default=func.now()
     )
 
     project = relationship("Project", back_populates="messages")

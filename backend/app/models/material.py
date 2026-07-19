@@ -20,7 +20,7 @@ class Material(Base):
     chunk_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     embedding_id: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
-        server_default=func.datetime("now")
+        server_default=func.now()
     )
 
     project = relationship("Project", back_populates="materials")

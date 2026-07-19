@@ -2,8 +2,12 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    database_url: str = "sqlite+aiosqlite:///./bujhai.db"
+    database_url: str = "postgresql+asyncpg://postgres:password@localhost:5432/bujhai"
     debug: bool = False
+
+    supabase_url: str = ""
+    supabase_anon_key: str = ""
+    supabase_service_key: str = ""
 
     groq_api_key: str = ""
     groq_model: str = "llama-3.3-70b-versatile"

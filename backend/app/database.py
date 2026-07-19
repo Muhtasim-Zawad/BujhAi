@@ -20,6 +20,5 @@ async def get_db():
 
 
 async def init_db():
-    async with engine.begin() as conn:
-        from app.models import project, module, material, message, canvas_scene
-        await conn.run_sync(Base.metadata.create_all)
+    """Migrations are handled by Alembic — this is a no-op placeholder."""
+    pass

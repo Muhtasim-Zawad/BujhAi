@@ -22,7 +22,7 @@ class Resource(Base):
     )
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime.datetime] = mapped_column(
-        server_default=func.datetime("now")
+        server_default=func.now()
     )
 
     project = relationship("Project", back_populates="resources")
