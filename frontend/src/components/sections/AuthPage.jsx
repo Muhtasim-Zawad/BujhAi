@@ -1,28 +1,54 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
+import { useSession } from "@/hooks/useSession";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
 
 export default function AuthPage() {
 	const navigate = useNavigate();
+	const { user } = useSession();
 	const [mode, setMode] = useState("signin");
 	const [showPassword, setShowPassword] = useState(false);
 	const [form, setForm] = useState({ name: "", email: "", password: "" });
+	const [error, setError] = useState("");
+	const [submitting, setSubmitting] = useState(false);
 
-	function handleSubmit(e) {
+	if (user) {
+		navigate("/dashboard");
+		return null;
+	}
+
+	async function handleSubmit(e) {
 		e.preventDefault();
+		setError("");
 		if (!form.email || !form.password) return;
 		if (mode === "signup" && !form.name) return;
 
-		localStorage.setItem(
-			"bujhai_user",
-			JSON.stringify({
-				name: form.name || form.email.split("@")[0],
-				email: form.email,
-			}),
-		);
-		navigate("/dashboard");
+		setSubmitting(true);
+		try {
+			if (mode === "signup") {
+				const { error } = await supabase.auth.signUp({
+					email: form.email,
+					password: form.password,
+					options: { data: { full_name: form.name } },
+				});
+				if (error) throw error;
+				navigate("/dashboard");
+			} else {
+				const { error } = await supabase.auth.signInWithPassword({
+					email: form.email,
+					password: form.password,
+				});
+				if (error) throw error;
+				navigate("/dashboard");
+			}
+		} catch (err) {
+			setError(err.message);
+		} finally {
+			setSubmitting(false);
+		}
 	}
 
 	return (
@@ -66,6 +92,12 @@ export default function AuthPage() {
 						Sign Up
 					</button>
 				</div>
+
+				{error && (
+					<div className="mb-4 rounded-xl border-2 border-red-500 bg-red-50 p-3 text-sm text-red-600">
+						{error}
+					</div>
+				)}
 
 				<form onSubmit={handleSubmit} className="flex flex-col gap-4">
 					{mode === "signup" && (
@@ -128,9 +160,14 @@ export default function AuthPage() {
 					<Button
 						type="submit"
 						size="lg"
+						disabled={submitting}
 						className="mt-2 w-full border-2 border-black bg-primary text-primary-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-0.5 active:translate-y-1 active:shadow-none"
 					>
-						{mode === "signin" ? "Sign In" : "Create Account"}
+						{submitting
+							? "Please wait..."
+							: mode === "signin"
+								? "Sign In"
+								: "Create Account"}
 					</Button>
 				</form>
 

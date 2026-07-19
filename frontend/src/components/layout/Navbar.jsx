@@ -15,14 +15,14 @@ import {
 } from "@/components/ui/hover-card";
 import { Separator } from "@/components/ui/separator";
 import { User, Settings, LogOut, BookOpen, Palette } from "lucide-react";
+import { useSession } from "@/hooks/useSession";
 
 export default function Navbar({ projects = [], onCreateProject, onOpenProject }) {
 	const navigate = useNavigate();
+	const { user, signOut } = useSession();
 
-	const raw = localStorage.getItem("bujhai_user");
-	const currentUser = raw ? JSON.parse(raw) : null;
-	const userName = currentUser?.name || "Guest User";
-	const userEmail = currentUser?.email || "guest@bujhai.app";
+	const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Guest User";
+	const userEmail = user?.email || "guest@bujhai.app";
 	const initials = userName
 		.split(" ")
 		.map((n) => n[0])
@@ -30,8 +30,8 @@ export default function Navbar({ projects = [], onCreateProject, onOpenProject }
 		.toUpperCase()
 		.slice(0, 2);
 
-	function handleSignOut() {
-		localStorage.removeItem("bujhai_user");
+	async function handleSignOut() {
+		await signOut();
 		navigate("/");
 	}
 	return (

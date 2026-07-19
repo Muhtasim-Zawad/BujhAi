@@ -1,3 +1,7 @@
+import asyncio
+
+from alembic.config import Config
+from alembic import command
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -20,5 +24,6 @@ async def get_db():
 
 
 async def init_db():
-    """Migrations are handled by Alembic — this is a no-op placeholder."""
-    pass
+    loop = asyncio.get_event_loop()
+    cfg = Config("alembic.ini")
+    await loop.run_in_executor(None, command.upgrade, cfg, "head")
