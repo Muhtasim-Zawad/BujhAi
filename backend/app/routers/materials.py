@@ -84,6 +84,8 @@ async def upload_material(
     if text.strip():
         chunk_count = ingest_text(project_id, material_id, text, file.filename or "untitled")
 
+    os.remove(file_path)
+
     material = Material(
         id=material_id,
         project_id=project_id,
