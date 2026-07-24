@@ -20,6 +20,8 @@ import app.models.message  # noqa: F401
 import app.models.canvas_scene  # noqa: F401
 import app.models.resource  # noqa: F401
 import app.models.user  # noqa: F401
+import app.models.enrollment  # noqa: F401
+import app.models.user_point_progress  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:

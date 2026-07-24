@@ -5,6 +5,8 @@ from app.models.resource import Resource
 from app.models.message import Message
 from app.models.canvas_scene import CanvasScene
 from app.models.user import User
+from app.models.enrollment import ProjectEnrollment
+from app.models.user_point_progress import UserPointProgress
 
 __all__ = [
     "Project",
@@ -15,4 +17,6 @@ __all__ = [
     "Message",
     "CanvasScene",
     "User",
+    "ProjectEnrollment",
+    "UserPointProgress",
 ]

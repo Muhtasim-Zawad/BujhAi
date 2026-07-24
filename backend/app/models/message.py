@@ -13,6 +13,9 @@ class Message(Base):
     project_id: Mapped[str] = mapped_column(
         String, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
+    user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id"), nullable=True
+    )
     role: Mapped[str] = mapped_column(String, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     metadata_json: Mapped[str] = mapped_column(String, default="{}")
@@ -21,3 +24,4 @@ class Message(Base):
     )
 
     project = relationship("Project", back_populates="messages")
+    user = relationship("User")

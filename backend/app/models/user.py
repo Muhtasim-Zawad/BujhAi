@@ -14,3 +14,5 @@ class User(Base):
     name: Mapped[str] = mapped_column(String, nullable=False, default="")
 
     projects = relationship("Project", back_populates="user", cascade="all, delete-orphan")
+    enrollments = relationship("ProjectEnrollment", back_populates="user", cascade="all, delete-orphan")
+    point_progress = relationship("UserPointProgress", back_populates="user", cascade="all, delete-orphan")

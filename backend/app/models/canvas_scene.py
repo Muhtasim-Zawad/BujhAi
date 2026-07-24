@@ -13,6 +13,9 @@ class CanvasScene(Base):
     project_id: Mapped[str] = mapped_column(
         String, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
+    user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id"), nullable=True
+    )
     scene_data: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
         server_default=func.now()
@@ -22,3 +25,4 @@ class CanvasScene(Base):
     )
 
     project = relationship("Project", back_populates="canvas_scenes")
+    user = relationship("User")

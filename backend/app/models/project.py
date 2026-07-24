@@ -16,6 +16,7 @@ class Project(Base):
     badge: Mapped[str] = mapped_column(String, default="New")
     button_text: Mapped[str] = mapped_column(String, default="Open Project")
     image_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    join_code: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         server_default=func.now()
     )
@@ -29,3 +30,4 @@ class Project(Base):
     messages = relationship("Message", back_populates="project", cascade="all, delete-orphan")
     canvas_scenes = relationship("CanvasScene", back_populates="project", cascade="all, delete-orphan")
     resources = relationship("Resource", back_populates="project", cascade="all, delete-orphan")
+    enrollments = relationship("ProjectEnrollment", back_populates="project", cascade="all, delete-orphan")
