@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.deps import get_current_user, verify_project_ownership
+from app.deps import get_current_user, verify_project_access, verify_project_owner
 from app.models.material import Material
 from app.models.module import Module, ModulePoint
 from app.models.project import Project
@@ -17,7 +17,7 @@ from app.services.generator import generate_from_materials
 from app.services.rag import delete_material, ingest_text
 from app.utils import nanoid
 
-router = APIRouter(prefix="/projects/{project_id}/materials", tags=["materials"], dependencies=[Depends(get_current_user), Depends(verify_project_ownership)])
+router = APIRouter(prefix="/projects/{project_id}/materials", tags=["materials"], dependencies=[Depends(get_current_user)])
 
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
 ALLOWED_MIME_TYPES = {
@@ -46,7 +46,9 @@ def _extract_text(file_path: str, mime_type: str) -> str:
 
 @router.get("", response_model=list[MaterialResponse])
 async def list_materials(
-    project_id: str, db: AsyncSession = Depends(get_db)
+    project_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: Project = Depends(verify_project_access),
 ):
     result = await db.execute(
         select(Material)
@@ -61,10 +63,8 @@ async def upload_material(
     project_id: str,
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
+    _: Project = Depends(verify_project_owner),
 ):
-    project = await db.get(Project, project_id)
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
 
     if file.size and file.size > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail="File too large (max 50 MB)")
@@ -115,6 +115,7 @@ async def delete_material_route(
     project_id: str,
     material_id: str,
     db: AsyncSession = Depends(get_db),
+    _: Project = Depends(verify_project_owner),
 ):
     material = await db.get(Material, material_id)
     if not material or material.project_id != project_id:
