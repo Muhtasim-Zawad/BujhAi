@@ -53,7 +53,7 @@ import {
 	deleteModulePoint,
 } from "@/utils/api";
 
-export default function Materials({ projectId }) {
+export default function Materials({ projectId, role }) {
 	const [materials, setMaterials] = useState([]);
 	const [modules, setModules] = useState([]);
 	const [loading, setLoading] = useState(true);
@@ -61,6 +61,8 @@ export default function Materials({ projectId }) {
 	const [editingModuleId, setEditingModuleId] = useState(null);
 	const [editingTitle, setEditingTitle] = useState("");
 	const fileInputRef = useRef(null);
+
+	const isStudent = role === "student";
 
 	useEffect(() => {
 		if (!projectId) return;
@@ -278,27 +280,30 @@ export default function Materials({ projectId }) {
 					</EmptyMedia>
 					<EmptyTitle>Welcome to Materials</EmptyTitle>
 					<EmptyDescription>
-						Upload your learning materials to get AI-generated modules and
-						resources.
+						{isStudent
+							? "Materials uploaded by the project owner will appear here."
+							: "Upload your learning materials to get AI-generated modules and resources."}
 					</EmptyDescription>
 				</EmptyHeader>
-				<EmptyContent className="flex-row justify-center gap-2">
-					<input
-						ref={fileInputRef}
-						type="file"
-						accept=".pdf,.txt,.doc,.docx"
-						className="hidden"
-						onChange={handleFileChange}
-					/>
-					<Button onClick={handleUpload} disabled={uploading}>
-						{uploading ? (
-							<Loader2 className="size-4 animate-spin" />
-						) : (
-							<Upload className="size-4" />
-						)}
-						Upload Materials
-					</Button>
-				</EmptyContent>
+				{!isStudent && (
+					<EmptyContent className="flex-row justify-center gap-2">
+						<input
+							ref={fileInputRef}
+							type="file"
+							accept=".pdf,.txt,.doc,.docx"
+							className="hidden"
+							onChange={handleFileChange}
+						/>
+						<Button onClick={handleUpload} disabled={uploading}>
+							{uploading ? (
+								<Loader2 className="size-4 animate-spin" />
+							) : (
+								<Upload className="size-4" />
+							)}
+							Upload Materials
+						</Button>
+					</EmptyContent>
+				)}
 			</Empty>
 		);
 	}
@@ -308,7 +313,9 @@ export default function Materials({ projectId }) {
 			<div className="flex flex-col gap-1">
 				<h1 className="font-head text-2xl tracking-tight">Materials</h1>
 				<p className="text-sm text-muted-foreground">
-					Upload learning materials and track module progress.
+					{isStudent
+						? "View learning materials and modules."
+						: "Upload learning materials and track module progress."}
 				</p>
 			</div>
 
@@ -317,27 +324,31 @@ export default function Materials({ projectId }) {
 					<span className="text-sm font-medium text-muted-foreground">
 						{materials.length} file{materials.length !== 1 ? "s" : ""} uploaded
 					</span>
-					<input
-						ref={fileInputRef}
-						type="file"
-						accept=".pdf,.txt,.doc,.docx"
-						className="hidden"
-						onChange={handleFileChange}
-					/>
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={handleUpload}
-						disabled={uploading}
-						className="border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-					>
-						{uploading ? (
-							<Loader2 className="size-4 animate-spin" />
-						) : (
-							<Upload className="size-4" />
-						)}
-						Upload More
-					</Button>
+					{!isStudent && (
+						<>
+							<input
+								ref={fileInputRef}
+								type="file"
+								accept=".pdf,.txt,.doc,.docx"
+								className="hidden"
+								onChange={handleFileChange}
+							/>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={handleUpload}
+								disabled={uploading}
+								className="border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+							>
+								{uploading ? (
+									<Loader2 className="size-4 animate-spin" />
+								) : (
+									<Upload className="size-4" />
+								)}
+								Upload More
+							</Button>
+						</>
+					)}
 				</div>
 				<div className="flex flex-row flex-wrap gap-3">
 					{materials.map((m) => (
@@ -356,45 +367,47 @@ export default function Materials({ projectId }) {
 										: `${(m.file_size / 1024).toFixed(1)} KB`}
 								</p>
 							</div>
-							<Dialog>
-								<DialogTrigger
-									render={
-										<button className="flex items-center justify-center size-7 rounded-lg border-2 border-black bg-background text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors cursor-pointer shrink-0 shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none" />
-									}
-								>
-									<Trash2 className="size-3.5" />
-								</DialogTrigger>
-								<DialogContent className="bg-card">
-									<DialogHeader>
-										<DialogTitle>Remove material</DialogTitle>
-										<DialogDescription>
-											Are you sure you want to remove{" "}
-											<span className="font-medium text-foreground">
-												{m.file_name}
-											</span>
-											? This action cannot be undone.
-										</DialogDescription>
-									</DialogHeader>
-									<DialogFooter>
-										<DialogClose
-											render={<Button variant="outline" size="sm" />}
-										>
-											Cancel
-										</DialogClose>
-										<DialogClose
-											render={
-												<Button
-													variant="destructive"
-													size="sm"
-													onClick={() => removeMaterial(m.id)}
-												/>
-											}
-										>
-											Remove
-										</DialogClose>
-									</DialogFooter>
-								</DialogContent>
-							</Dialog>
+							{!isStudent && (
+								<Dialog>
+									<DialogTrigger
+										render={
+											<button className="flex items-center justify-center size-7 rounded-lg border-2 border-black bg-background text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors cursor-pointer shrink-0 shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none" />
+										}
+									>
+										<Trash2 className="size-3.5" />
+									</DialogTrigger>
+									<DialogContent className="bg-card">
+										<DialogHeader>
+											<DialogTitle>Remove material</DialogTitle>
+											<DialogDescription>
+												Are you sure you want to remove{" "}
+												<span className="font-medium text-foreground">
+													{m.file_name}
+												</span>
+												? This action cannot be undone.
+											</DialogDescription>
+										</DialogHeader>
+										<DialogFooter>
+											<DialogClose
+												render={<Button variant="outline" size="sm" />}
+											>
+												Cancel
+											</DialogClose>
+											<DialogClose
+												render={
+													<Button
+														variant="destructive"
+														size="sm"
+														onClick={() => removeMaterial(m.id)}
+													/>
+												}
+											>
+												Remove
+											</DialogClose>
+										</DialogFooter>
+									</DialogContent>
+								</Dialog>
+							)}
 						</div>
 					))}
 				</div>
@@ -421,7 +434,7 @@ export default function Materials({ projectId }) {
 									<AccordionItem>
 										<AccordionTrigger className="group">
 											<div className="flex flex-1 items-center gap-4">
-												{editingModuleId === mod.id ? (
+												{!isStudent && editingModuleId === mod.id ? (
 													<input
 														value={editingTitle}
 														onChange={(e) => setEditingTitle(e.target.value)}
@@ -436,23 +449,25 @@ export default function Materials({ projectId }) {
 												) : (
 													<span className="text-sm font-head">{mod.title}</span>
 												)}
-												<div
-													className="flex items-center gap-1 ml-auto"
-													onClick={(e) => e.stopPropagation()}
-												>
-													<button
-														onClick={() => startEditing(mod)}
-														className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 cursor-pointer"
+												{!isStudent && (
+													<div
+														className="flex items-center gap-1 ml-auto"
+														onClick={(e) => e.stopPropagation()}
 													>
-														<Edit3 className="size-3.5" />
-													</button>
-													<button
-														onClick={() => deleteModuleLocal(mod.id)}
-														className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-destructive cursor-pointer"
-													>
-														<Trash2 className="size-3.5" />
-													</button>
-												</div>
+														<button
+															onClick={() => startEditing(mod)}
+															className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 cursor-pointer"
+														>
+															<Edit3 className="size-3.5" />
+														</button>
+														<button
+															onClick={() => deleteModuleLocal(mod.id)}
+															className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-destructive cursor-pointer"
+														>
+															<Trash2 className="size-3.5" />
+														</button>
+													</div>
+												)}
 											</div>
 										</AccordionTrigger>
 										<AccordionContent>
@@ -476,43 +491,52 @@ export default function Materials({ projectId }) {
 															key={point.id}
 															className="flex items-center gap-2 group/point"
 														>
-															<Checkbox
-																checked={point.checked}
-																onCheckedChange={() =>
-																	togglePoint(mod.id, point.id)
-																}
-																className="size-4 shrink-0"
-															/>
+															{!isStudent && (
+																<Checkbox
+																	checked={point.checked}
+																	onCheckedChange={() =>
+																		togglePoint(mod.id, point.id)
+																	}
+																	className="size-4 shrink-0"
+																/>
+															)}
 															<input
 																value={point.text}
 																onChange={(e) =>
-																	updatePointText(
-																		mod.id,
-																		point.id,
-																		e.target.value,
-																	)
+																	isStudent
+																		? null
+																		: updatePointText(
+																				mod.id,
+																				point.id,
+																				e.target.value,
+																			)
 																}
-																className="flex-1 bg-transparent text-sm outline-none border-b border-transparent focus:border-black transition-colors"
+																readOnly={isStudent}
+																className={`flex-1 bg-transparent text-sm outline-none border-b border-transparent ${isStudent ? "" : "focus:border-black"} transition-colors`}
 															/>
-															<button
-																onClick={() =>
-																	deletePointLocal(mod.id, point.id)
-																}
-																className="opacity-0 group-hover/point:opacity-100 transition-opacity text-destructive p-0.5 cursor-pointer"
-															>
-																<Trash2 className="size-3" />
-															</button>
+															{!isStudent && (
+																<button
+																	onClick={() =>
+																		deletePointLocal(mod.id, point.id)
+																	}
+																	className="opacity-0 group-hover/point:opacity-100 transition-opacity text-destructive p-0.5 cursor-pointer"
+																>
+																	<Trash2 className="size-3" />
+																</button>
+															)}
 														</div>
 													))}
 												</div>
 
-												<button
-													onClick={() => addPoint(mod.id)}
-													className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-												>
-													<Plus className="size-3" />
-													Add point
-												</button>
+												{!isStudent && (
+													<button
+														onClick={() => addPoint(mod.id)}
+														className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+													>
+														<Plus className="size-3" />
+														Add point
+													</button>
+												)}
 											</div>
 										</AccordionContent>
 									</AccordionItem>
@@ -526,15 +550,17 @@ export default function Materials({ projectId }) {
 					</p>
 				)}
 
-				<Button
-					onClick={addModule}
-					variant="outline"
-					size="sm"
-					className="w-full mt-2 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-				>
-					<Plus className="size-4" />
-					Add Module
-				</Button>
+				{!isStudent && (
+					<Button
+						onClick={addModule}
+						variant="outline"
+						size="sm"
+						className="w-full mt-2 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+					>
+						<Plus className="size-4" />
+						Add Module
+					</Button>
+				)}
 			</div>
 		</div>
 	);
