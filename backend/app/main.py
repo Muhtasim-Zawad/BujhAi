@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import init_db
-from app.routers import canvas, chat, materials, modules, projects, resources, stats, stt
+from app.routers import canvas, chat, enrollment, materials, modules, projects, resources, stats, stt
 
 
 @asynccontextmanager
@@ -36,6 +36,7 @@ app.include_router(chat.router)
 app.include_router(resources.router)
 app.include_router(stats.router)
 app.include_router(canvas.router)
+app.include_router(enrollment.router)
 
 
 @app.get("/health")
