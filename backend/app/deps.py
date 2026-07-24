@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
+from app.models.enrollment import ProjectEnrollment
 from app.models.project import Project
 from app.models.user import User
 import httpx
@@ -73,17 +74,85 @@ async def _get_http_client() -> httpx.AsyncClient:
     return _http_client
 
 
+async def get_enrollment_role(
+    project_id: str,
+    user_id: str,
+    db: AsyncSession,
+) -> str | None:
+    result = await db.execute(
+        select(Project.user_id).where(Project.id == project_id)
+    )
+    owner_id = result.scalar_one_or_none()
+    if owner_id is None:
+        return None
+    if owner_id == user_id:
+        return "owner"
+    result = await db.execute(
+        select(ProjectEnrollment).where(
+            ProjectEnrollment.project_id == project_id,
+            ProjectEnrollment.user_id == user_id,
+        )
+    )
+    enrollment = result.scalar_one_or_none()
+    return "student" if enrollment else None
+
+
+async def verify_project_access(
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Project:
+    project_id = request.path_params.get("project_id")
+    if not project_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing project_id")
+
+    result = await db.execute(select(Project).where(Project.id == project_id))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+    if project.user_id == user.id:
+        return project
+
+    result = await db.execute(
+        select(ProjectEnrollment).where(
+            ProjectEnrollment.project_id == project_id,
+            ProjectEnrollment.user_id == user.id,
+        )
+    )
+    enrollment = result.scalar_one_or_none()
+    if not enrollment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+    return project
+
+
+async def verify_project_owner(
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Project:
+    project_id = request.path_params.get("project_id")
+    if not project_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing project_id")
+
+    result = await db.execute(select(Project).where(Project.id == project_id))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+    if project.user_id != user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the project owner can perform this action",
+        )
+
+    return project
+
+
 async def verify_project_ownership(
     request: Request,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> None:
-    project_id = request.path_params.get("project_id")
-    if not project_id:
-        return
-    result = await db.execute(
-        select(Project).where(Project.id == project_id, Project.user_id == user.id)
-    )
-    project = result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+) -> Project:
+    return await verify_project_owner(request, user, db)
