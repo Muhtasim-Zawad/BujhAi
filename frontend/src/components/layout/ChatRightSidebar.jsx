@@ -25,11 +25,13 @@ import {
 	deleteModulePoint,
 } from "@/utils/api";
 
-export default function ChatRightSidebar({ projectId }) {
+export default function ChatRightSidebar({ projectId, role }) {
 	const [isCollapsed, setIsCollapsed] = useState(false);
 	const [modules, setModules] = useState([]);
 	const [editingModuleId, setEditingModuleId] = useState(null);
 	const [editingTitle, setEditingTitle] = useState("");
+
+	const isStudent = role === "student";
 
 	useEffect(() => {
 		if (!projectId) return;
@@ -48,17 +50,10 @@ export default function ChatRightSidebar({ projectId }) {
 
 	useEffect(() => {
 		if (!projectId) return;
-		console.log("[ChatRightSidebar] Starting 10s polling for modules");
 		const interval = setInterval(() => {
-			fetchModules(projectId).then((data) => {
-				console.log("[ChatRightSidebar] Polling fetched", data.length, "modules");
-				setModules(data);
-			}).catch(() => {});
+			fetchModules(projectId).then(setModules).catch(() => {});
 		}, 10000);
-		return () => {
-			console.log("[ChatRightSidebar] Clearing polling interval");
-			clearInterval(interval);
-		};
+		return () => clearInterval(interval);
 	}, [projectId]);
 
 	useEffect(() => {
@@ -73,8 +68,6 @@ export default function ChatRightSidebar({ projectId }) {
 			window.removeEventListener("materials-changed", handler);
 		};
 	}, [projectId]);
-
-
 
 	const totalPoints = modules.reduce((sum, m) => sum + (m.points?.length || 0), 0);
 	const checkedPoints = modules.reduce(
@@ -172,26 +165,6 @@ export default function ChatRightSidebar({ projectId }) {
 		}
 	}
 
-	async function updatePointText(moduleId, pointId, text) {
-		try {
-			const updated = await updateModulePoint(projectId, moduleId, pointId, { text });
-			setModules((prev) =>
-				prev.map((m) =>
-					m.id === moduleId
-						? {
-								...m,
-								points: (m.points || []).map((p) =>
-									p.id === pointId ? updated : p,
-								),
-							}
-						: m,
-				),
-			);
-		} catch (err) {
-			console.error("Update point failed:", err);
-		}
-	}
-
 	function getModuleProgress(module) {
 		const pts = module.points || [];
 		if (pts.length === 0) return 0;
@@ -241,8 +214,6 @@ export default function ChatRightSidebar({ projectId }) {
 						<ProgressValue>{globalProgress}%</ProgressValue>
 					</Progress>
 
-
-
 					{modules.length > 0 ? (
 						<div className="flex flex-col gap-2">
 							{modules.map((module) => {
@@ -253,38 +224,26 @@ export default function ChatRightSidebar({ projectId }) {
 									<Accordion key={module.id}>
 										<AccordionItem>
 											<AccordionTrigger className="group">
-												{editingModuleId === module.id ? (
-													<input
-														value={editingTitle}
-														onChange={(e) => setEditingTitle(e.target.value)}
-														onBlur={() => renameModule(module.id)}
-														onKeyDown={(e) =>
-															e.key === "Enter" && renameModule(module.id)
-														}
-														className="flex-1 bg-transparent text-sm font-head outline-none border-b border-black"
-														autoFocus
+												<span className="text-sm font-head">{module.title}</span>
+												{!isStudent && (
+													<div
+														className="flex items-center gap-1"
 														onClick={(e) => e.stopPropagation()}
-													/>
-												) : (
-													<span className="text-sm font-head">{module.title}</span>
+													>
+														<button
+															onClick={() => startEditing(module)}
+															className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 cursor-pointer"
+														>
+															<Edit3 className="size-3.5" />
+														</button>
+														<button
+															onClick={() => deleteModuleLocal(module.id)}
+															className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-destructive cursor-pointer"
+														>
+															<Trash2 className="size-3.5" />
+														</button>
+													</div>
 												)}
-												<div
-													className="flex items-center gap-1"
-													onClick={(e) => e.stopPropagation()}
-												>
-													<button
-														onClick={() => startEditing(module)}
-														className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 cursor-pointer"
-													>
-														<Edit3 className="size-3.5" />
-													</button>
-													<button
-														onClick={() => deleteModuleLocal(module.id)}
-														className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-destructive cursor-pointer"
-													>
-														<Trash2 className="size-3.5" />
-													</button>
-												</div>
 											</AccordionTrigger>
 											<AccordionContent>
 												<div className="flex flex-col gap-3">
@@ -304,35 +263,56 @@ export default function ChatRightSidebar({ projectId }) {
 													<div className="flex flex-col gap-1.5">
 														{pts.map((point) => (
 															<div key={point.id} className="flex items-center gap-2 group/point">
-																<Checkbox
-																	checked={point.checked}
-																	onCheckedChange={() => togglePoint(module.id, point.id)}
-																	className="size-4 shrink-0"
-																/>
-																<input
-																	value={point.text}
-																	onChange={(e) =>
-																		updatePointText(module.id, point.id, e.target.value)
-																	}
-																	className="flex-1 bg-transparent text-sm outline-none border-b border-transparent focus:border-black transition-colors"
-																/>
-																<button
-																	onClick={() => deletePointLocal(module.id, point.id)}
-																	className="opacity-0 group-hover/point:opacity-100 transition-opacity text-destructive p-0.5 cursor-pointer"
-																>
-																	<Trash2 className="size-3" />
-																</button>
+																{!isStudent && (
+																	<Checkbox
+																		checked={point.checked}
+																		onCheckedChange={() => togglePoint(module.id, point.id)}
+																		className="size-4 shrink-0"
+																	/>
+																)}
+																{isStudent && (
+																	<div
+																		className={cn(
+																			"size-4 shrink-0 rounded border-2 flex items-center justify-center",
+																			point.checked
+																				? "bg-primary border-primary"
+																				: "border-muted-foreground",
+																		)}
+																	>
+																		{point.checked && (
+																			<svg className="size-3 text-primary-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+																				<path d="M5 13l4 4L19 7" />
+																			</svg>
+																		)}
+																	</div>
+																)}
+																<span className={cn(
+																	"flex-1 text-sm",
+																	point.checked && "text-muted-foreground line-through",
+																)}>
+																	{point.text}
+																</span>
+																{!isStudent && (
+																	<button
+																		onClick={() => deletePointLocal(module.id, point.id)}
+																		className="opacity-0 group-hover/point:opacity-100 transition-opacity text-destructive p-0.5 cursor-pointer"
+																	>
+																		<Trash2 className="size-3" />
+																	</button>
+																)}
 															</div>
 														))}
 													</div>
 
-													<button
-														onClick={() => addPoint(module.id)}
-														className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-													>
-														<Plus className="size-3" />
-														Add point
-													</button>
+													{!isStudent && (
+														<button
+															onClick={() => addPoint(module.id)}
+															className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+														>
+															<Plus className="size-3" />
+															Add point
+														</button>
+													)}
 												</div>
 											</AccordionContent>
 										</AccordionItem>
@@ -344,15 +324,17 @@ export default function ChatRightSidebar({ projectId }) {
 						<p className="text-sm text-muted-foreground text-center py-4">No modules yet</p>
 					)}
 
-					<Button
-						onClick={addModule}
-						variant="outline"
-						size="sm"
-						className="w-full border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-					>
-						<Plus className="size-4" />
-						Add Module
-					</Button>
+					{!isStudent && (
+						<Button
+							onClick={addModule}
+							variant="outline"
+							size="sm"
+							className="w-full border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+						>
+							<Plus className="size-4" />
+							Add Module
+						</Button>
+					)}
 				</div>
 			)}
 		</div>
