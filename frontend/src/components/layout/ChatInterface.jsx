@@ -1,7 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import Canvas, {
@@ -9,7 +7,7 @@ import Canvas, {
 	clearCanvas,
 	loadCanvasScene,
 } from "@/components/layout/Canvas";
-import { streamChat, sendStt, fetchCanvas, saveCanvas } from "@/utils/api";
+import { streamChat, sendStt, fetchMessages, fetchCanvas, saveCanvas } from "@/utils/api";
 import {
 	Send,
 	Paperclip,
@@ -27,16 +25,8 @@ const AVATARS = {
 	student: "https://avatar.vercel.sh/tutor",
 };
 
-export default function ChatInterface({ projectId }) {
-	const [messages, setMessages] = useState([
-		{
-			id: 1,
-			role: "assistant",
-			persona: "student",
-			content: "Hello! I'm BujhAI. How can I help you today?",
-			timestamp: new Date(),
-		},
-	]);
+export default function ChatInterface({ projectId, role }) {
+	const [messages, setMessages] = useState([]);
 	const [input, setInput] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 	const [showCanvas, setShowCanvas] = useState(false);
@@ -51,8 +41,6 @@ export default function ChatInterface({ projectId }) {
 	const audioChunksRef = useRef([]);
 	const timerRef = useRef(null);
 	const currentPersonaRef = useRef(null);
-	const evaluatorMsgIdRef = useRef(null);
-	const autoSaveTimerRef = useRef(null);
 	const [savedCanvasScene, setSavedCanvasScene] = useState(null);
 
 	useEffect(() => {
@@ -64,6 +52,47 @@ export default function ChatInterface({ projectId }) {
 			if (timerRef.current) clearInterval(timerRef.current);
 		};
 	}, []);
+
+	useEffect(() => {
+		if (!projectId) return;
+		fetchMessages(projectId).then((msgs) => {
+			if (msgs && msgs.length > 0) {
+				const formatted = msgs.map((m) => ({
+					id: m.id,
+					role: m.role,
+					persona: m.role === "assistant" ? "student" : null,
+					content: m.content,
+					timestamp: new Date(m.created_at) || new Date(),
+				}));
+				formatted.push({
+					id: "welcome",
+					role: "assistant",
+					persona: "student",
+					content: msgs.length > 0
+						? "Welcome back! Continue where you left off."
+						: "Hello! I'm BujhAI. How can I help you today?",
+					timestamp: new Date(),
+				});
+				setMessages(formatted);
+			} else {
+				setMessages([{
+					id: "welcome",
+					role: "assistant",
+					persona: "student",
+					content: "Hello! I'm BujhAI. How can I help you today?",
+					timestamp: new Date(),
+				}]);
+			}
+		}).catch(() => {
+			setMessages([{
+				id: "welcome",
+				role: "assistant",
+				persona: "student",
+				content: "Hello! I'm BujhAI. How can I help you today?",
+				timestamp: new Date(),
+			}]);
+		});
+	}, [projectId]);
 
 	useEffect(() => {
 		if (!projectId) return;
@@ -82,31 +111,8 @@ export default function ChatInterface({ projectId }) {
 		}
 	}, [showCanvas, savedCanvasScene]);
 
-	useEffect(() => {
-		if (!showCanvas || !projectId) {
-			if (autoSaveTimerRef.current) {
-				clearInterval(autoSaveTimerRef.current);
-				autoSaveTimerRef.current = null;
-			}
-			return;
-		}
-		autoSaveTimerRef.current = setInterval(() => {
-			const sceneData = getCanvasScene(excalidrawRef);
-			if (sceneData) {
-				saveCanvas(projectId, sceneData).catch(() => {});
-			}
-		}, 10000);
-		return () => {
-			if (autoSaveTimerRef.current) {
-				clearInterval(autoSaveTimerRef.current);
-				autoSaveTimerRef.current = null;
-			}
-		};
-	}, [showCanvas, projectId]);
-
 	const onEvaluatorStart = useCallback(() => {
 		const id = Date.now();
-		evaluatorMsgIdRef.current = id;
 		currentPersonaRef.current = "evaluator";
 		setMessages((prev) => [
 			...prev,
@@ -306,12 +312,6 @@ export default function ChatInterface({ projectId }) {
 			<div className="flex items-center justify-end border-b-2 border-black bg-card px-4 py-2">
 				<button
 					onClick={() => {
-						if (showCanvas && projectId) {
-							const sceneData = getCanvasScene(excalidrawRef);
-							if (sceneData) {
-								saveCanvas(projectId, sceneData).catch(() => {});
-							}
-						}
 						setShowCanvas((v) => !v);
 					}}
 					className="flex cursor-pointer items-center gap-1.5 rounded-md border-2 border-black bg-background px-3 py-1.5 text-xs font-medium shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-y-0.5 active:translate-y-1 active:shadow-none"
