@@ -25,6 +25,7 @@ class ProjectResponse(BaseModel):
     badge: str
     image_url: str | None
     button_text: str | None
+    join_code: str | None
     created_at: datetime.datetime
     updated_at: datetime.datetime | None
 

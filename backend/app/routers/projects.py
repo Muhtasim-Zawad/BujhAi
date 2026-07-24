@@ -3,12 +3,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.deps import get_current_user
+from app.deps import get_current_user, verify_project_access, verify_project_owner
+from app.models.enrollment import ProjectEnrollment
 from app.models.project import Project
 from app.models.user import User
 from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate
 from app.services.rag import delete_collection
-from app.utils import nanoid
+from app.utils import generate_join_code, nanoid
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -18,12 +19,23 @@ async def list_projects(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    result = await db.execute(
+    owned = await db.execute(
         select(Project)
         .where(Project.user_id == user.id)
-        .order_by(Project.created_at.desc())
     )
-    return result.scalars().all()
+    owned_projects = list(owned.scalars().all())
+
+    enrolled = await db.execute(
+        select(Project)
+        .join(ProjectEnrollment, ProjectEnrollment.project_id == Project.id)
+        .where(ProjectEnrollment.user_id == user.id)
+    )
+    enrolled_projects = list(enrolled.scalars().all())
+
+    seen = {p.id for p in owned_projects}
+    combined = owned_projects + [p for p in enrolled_projects if p.id not in seen]
+    combined.sort(key=lambda p: p.created_at, reverse=True)
+    return combined
 
 
 @router.post("", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
@@ -40,6 +52,7 @@ async def create_project(
         badge=body.badge,
         button_text=body.button_text,
         image_url=body.image_url or f"https://avatar.vercel.sh/{nanoid()}",
+        join_code=generate_join_code(),
     )
     db.add(project)
     await db.commit()
@@ -47,23 +60,11 @@ async def create_project(
     return project
 
 
-async def _get_user_project(project_id: str, user_id: str, db: AsyncSession) -> Project:
-    result = await db.execute(
-        select(Project).where(Project.id == project_id, Project.user_id == user_id)
-    )
-    project = result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
-    return project
-
-
 @router.get("/{project_id}", response_model=ProjectResponse)
 async def get_project(
-    project_id: str,
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    project: Project = Depends(verify_project_access),
 ):
-    return await _get_user_project(project_id, user.id, db)
+    return project
 
 
 @router.put("/{project_id}", response_model=ProjectResponse)
@@ -71,10 +72,8 @@ async def update_project(
     project_id: str,
     body: ProjectUpdate,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    project: Project = Depends(verify_project_owner),
 ):
-    project = await _get_user_project(project_id, user.id, db)
-
     updates = body.model_dump(exclude_unset=True)
     for key, value in updates.items():
         setattr(project, key, value)
@@ -88,10 +87,20 @@ async def update_project(
 async def delete_project(
     project_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    project: Project = Depends(verify_project_owner),
 ):
-    project = await _get_user_project(project_id, user.id, db)
-
     delete_collection(project_id)
     await db.delete(project)
     await db.commit()
+
+
+@router.put("/{project_id}/regenerate-code", response_model=ProjectResponse)
+async def regenerate_join_code(
+    project_id: str,
+    db: AsyncSession = Depends(get_db),
+    project: Project = Depends(verify_project_owner),
+):
+    project.join_code = generate_join_code()
+    await db.commit()
+    await db.refresh(project)
+    return project
