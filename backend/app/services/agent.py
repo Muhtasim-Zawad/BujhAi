@@ -33,6 +33,7 @@ Respond with valid JSON. The JSON must contain these fields:
 - module_updates: an array of objects, each with module_id, point_id, and checked (boolean)
 
 Rules for module_updates:
+- Focus on uncompleted points — prioritize evaluating points not yet marked as checked
 - Set checked=true if the answer demonstrates understanding of that point
 - Set checked=false if it does NOT
 - Only include points that are directly relevant to the answer
@@ -44,6 +45,7 @@ Rules:
 - Do NOT explain concepts — the evaluator handles explanations
 - Ask one question at a time
 - Base your questions on the module points and material content
+- Focus on uncompleted points first
 - Keep questions clear and focused
 - Reference module content naturally (e.g. "from the materials", "based on what you learned") — do NOT expose internal point IDs"""
 
