@@ -13,16 +13,16 @@ import {
 	AccordionTrigger,
 	AccordionContent,
 } from "@/components/ui/accordion";
-import { Button } from "@/components/ui/button";
-import { fetchStats, fetchResources, fetchModules } from "@/utils/api";
-import { Video, Globe, Map, ExternalLink } from "lucide-react";
+import { fetchStats, fetchResources, fetchModules, getEnrolledStats } from "@/utils/api";
+import { Video, Globe, Map, ExternalLink, Users } from "lucide-react";
 
-export default function Stats({ projectId }) {
+export default function Stats({ projectId, role }) {
 	const [section, setSection] = useState("results");
 	const [stats, setStats] = useState(null);
 	const [resources, setResources] = useState([]);
 	const [modules, setModules] = useState([]);
 	const [loading, setLoading] = useState(true);
+	const [enrolledStats, setEnrolledStats] = useState(null);
 
 	useEffect(() => {
 		if (!projectId) return;
@@ -31,13 +31,15 @@ export default function Stats({ projectId }) {
 			fetchStats(projectId).catch(() => null),
 			fetchResources(projectId).catch(() => []),
 			fetchModules(projectId).catch(() => []),
-		]).then(([s, r, m]) => {
+			role === "owner" ? getEnrolledStats(projectId).catch(() => null) : Promise.resolve(null),
+		]).then(([s, r, m, e]) => {
 			setStats(s);
 			setResources(r);
 			setModules(m);
+			setEnrolledStats(e);
 			setLoading(false);
 		});
-	}, [projectId]);
+	}, [projectId, role]);
 
 	useEffect(() => {
 		const handler = () => {
@@ -45,10 +47,17 @@ export default function Stats({ projectId }) {
 			fetchStats(projectId).then(setStats).catch(() => {});
 			fetchResources(projectId).then(setResources).catch(() => {});
 			fetchModules(projectId).then(setModules).catch(() => {});
+			if (role === "owner") {
+				getEnrolledStats(projectId).then(setEnrolledStats).catch(() => {});
+			}
 		};
 		window.addEventListener("materials-changed", handler);
 		return () => window.removeEventListener("materials-changed", handler);
-	}, [projectId]);
+	}, [projectId, role]);
+
+	const tabs = role === "owner"
+		? ["results", "modules", "resources", "enrolled"]
+		: ["results", "modules", "resources"];
 
 	if (loading) {
 		return (
@@ -67,8 +76,8 @@ export default function Stats({ projectId }) {
 				</p>
 			</div>
 
-			<div className="flex gap-2">
-				{["results", "modules", "resources"].map((tab) => (
+			<div className="flex gap-2 flex-wrap">
+				{tabs.map((tab) => (
 					<button
 						key={tab}
 						onClick={() => setSection(tab)}
@@ -79,7 +88,11 @@ export default function Stats({ projectId }) {
 								: "bg-background border-black hover:bg-accent hover:translate-y-0.5 active:translate-y-1 active:shadow-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]",
 						)}
 					>
-						{tab.charAt(0).toUpperCase() + tab.slice(1)}
+						{tab === "enrolled" ? (
+							<><Users className="size-3.5" /> Enrolled</>
+						) : (
+							tab.charAt(0).toUpperCase() + tab.slice(1)
+						)}
 					</button>
 				))}
 			</div>
@@ -204,6 +217,78 @@ export default function Stats({ projectId }) {
 						);
 					})}
 				</Accordion>
+			)}
+
+			{section === "enrolled" && role === "owner" && enrolledStats && (
+				<div className="flex flex-col gap-4">
+					{enrolledStats.enrolled.length === 0 ? (
+						<p className="text-sm text-muted-foreground text-center py-8">
+							No enrolled users yet. Share your project join code to invite students.
+						</p>
+					) : (
+						enrolledStats.enrolled.map((user) => {
+							const pct = user.total_points > 0
+								? Math.round((user.points_completed / user.total_points) * 100)
+								: 0;
+							return (
+								<Card key={user.user_id}>
+									<CardHeader>
+										<div className="flex items-center justify-between">
+											<div>
+												<CardTitle>{user.user_name}</CardTitle>
+												<CardDescription>{user.email}</CardDescription>
+											</div>
+											<div className="text-right">
+												<p className="text-2xl font-bold">{user.points_completed}/{user.total_points}</p>
+												<p className="text-xs text-muted-foreground">points</p>
+											</div>
+										</div>
+									</CardHeader>
+									<CardContent>
+										<div className="relative h-2 w-full overflow-hidden rounded border border-black bg-background mb-4">
+											<div
+												className="h-full bg-primary transition-all duration-300"
+												style={{ width: `${pct}%` }}
+											/>
+										</div>
+										<Accordion>
+											<AccordionItem>
+												<AccordionTrigger className="text-sm font-medium">
+													Per-Module Breakdown
+												</AccordionTrigger>
+												<AccordionContent>
+													<div className="flex flex-col gap-2">
+														{user.modules.map((mod) => {
+															const modPct = mod.total_points > 0
+																? Math.round((mod.completed_points / mod.total_points) * 100)
+																: 0;
+															return (
+																<div key={mod.module_id} className="flex items-center justify-between rounded-lg bg-muted/30 p-2">
+																	<span className="text-sm font-medium truncate flex-1">{mod.module_title}</span>
+																	<div className="flex items-center gap-3 ml-4">
+																		<span className="text-xs text-muted-foreground whitespace-nowrap">
+																			{mod.completed_points}/{mod.total_points}
+																		</span>
+																		<div className="w-20 h-1.5 rounded-full bg-background border border-black">
+																			<div
+																				className="h-full bg-primary rounded-full transition-all"
+																				style={{ width: `${modPct}%` }}
+																			/>
+																		</div>
+																	</div>
+																</div>
+															);
+														})}
+													</div>
+												</AccordionContent>
+											</AccordionItem>
+										</Accordion>
+									</CardContent>
+								</Card>
+							);
+						})
+					)}
+				</div>
 			)}
 		</div>
 	);
