@@ -64,6 +64,7 @@ export default function Dashboard() {
 	const [isJoinOpen, setIsJoinOpen] = useState(false);
 	const [newProject, setNewProject] = useState({ title: "", description: "" });
 	const [deletingProject, setDeletingProject] = useState(null);
+	const [leavingProject, setLeavingProject] = useState(null);
 	const [resourcesMap, setResourcesMap] = useState({});
 	const [statsMap, setStatsMap] = useState({});
 	const [loadingResources, setLoadingResources] = useState({});
@@ -150,6 +151,7 @@ export default function Dashboard() {
 			const res = await fetchProjects();
 			setProjects(res.map(normalizeProject));
 			setJoinCode("");
+			setIsJoinOpen(false);
 		} catch (err) {
 			const msg = err.message || "Failed to join project";
 			if (msg.includes("404")) setJoinError("Invalid join code");
@@ -159,13 +161,14 @@ export default function Dashboard() {
 		setJoining(false);
 	}
 
-	async function handleLeave(projectId) {
+	async function handleLeave(project) {
 		try {
-			await leaveProject(projectId);
-			setProjects((prev) => prev.filter((p) => p.id !== projectId));
+			await leaveProject(project.id);
+			setProjects((prev) => prev.filter((p) => p.id !== project.id));
 		} catch (err) {
 			console.error("Leave failed:", err);
 		}
+		setLeavingProject(null);
 	}
 
 	async function handleRegenerateCode(projectId) {
@@ -312,7 +315,7 @@ export default function Dashboard() {
 										<div key={project.id} className="group relative">
 											<ProjectCard {...project} onAction={() => navigate(`/project/${project.id}`)} />
 											<button
-												onClick={() => handleLeave(project.id)}
+												onClick={() => setLeavingProject(project)}
 												className="absolute top-2 right-2 z-40 flex cursor-pointer items-center gap-1 rounded-sm bg-destructive p-1.5 text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
 												title="Leave project"
 											>
@@ -551,6 +554,31 @@ export default function Dashboard() {
 							<DialogFooter>
 								<DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
 								<DialogClose render={<Button variant="destructive" onClick={() => handleDelete(deletingProject)} />}>Delete</DialogClose>
+							</DialogFooter>
+						</DialogContent>
+					)}
+				</Dialog>
+
+				{/* Leave project confirmation dialog */}
+				<Dialog
+					open={!!leavingProject}
+					onOpenChange={(open) => !open && setLeavingProject(null)}
+				>
+					{leavingProject && (
+						<DialogContent className="bg-card">
+							<DialogHeader>
+								<DialogTitle>Leave Project</DialogTitle>
+								<DialogDescription>
+									Are you sure you want to leave{" "}
+									<span className="font-medium text-foreground">
+										{leavingProject.title}
+									</span>
+									?
+								</DialogDescription>
+							</DialogHeader>
+							<DialogFooter>
+								<DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+								<DialogClose render={<Button variant="destructive" onClick={() => handleLeave(leavingProject)} />}>Leave</DialogClose>
 							</DialogFooter>
 						</DialogContent>
 					)}
