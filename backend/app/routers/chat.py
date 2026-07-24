@@ -8,16 +8,50 @@ from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.database import async_session, get_db
-from app.deps import get_current_user, verify_project_ownership
+from app.deps import get_current_user, get_enrollment_role, verify_project_access
 from app.models.message import Message
 from app.models.module import Module
 from app.models.project import Project
 from app.models.module import ModulePoint
+from app.models.user import User
+from app.models.user_point_progress import UserPointProgress
 from app.schemas.chat import ChatRequest
 from app.services.agent import stream_chat_agent
 from app.services.excalidraw import parse_scene
+from app.utils import nanoid
 
-router = APIRouter(prefix="/projects/{project_id}/chat", tags=["chat"], dependencies=[Depends(get_current_user), Depends(verify_project_ownership)])
+router = APIRouter(prefix="/projects/{project_id}/chat", tags=["chat"], dependencies=[Depends(get_current_user)])
+
+
+@router.get("/messages")
+async def get_messages(
+    project_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+    _: Project = Depends(verify_project_access),
+):
+    role = await get_enrollment_role(project_id, user.id, db)
+    if role == "owner":
+        result = await db.execute(
+            select(Message)
+            .where(Message.project_id == project_id, Message.user_id.is_(None))
+            .order_by(Message.created_at.desc())
+            .limit(20)
+        )
+    elif role == "student":
+        result = await db.execute(
+            select(Message)
+            .where(Message.project_id == project_id, Message.user_id == user.id)
+            .order_by(Message.created_at.desc())
+            .limit(20)
+        )
+    else:
+        return []
+    messages = list(reversed(result.scalars().all()))
+    return [
+        {"id": m.id, "role": m.role, "content": m.content, "metadata_json": m.metadata_json}
+        for m in messages
+    ]
 
 
 @router.post("/stream")
@@ -25,6 +59,7 @@ async def chat_stream(
     project_id: str,
     body: ChatRequest,
     db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     if not settings.groq_api_key:
         raise HTTPException(
@@ -34,6 +69,10 @@ async def chat_stream(
 
     project = await db.get(Project, project_id)
     if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+    role = await get_enrollment_role(project_id, user.id, db)
+    if role is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
     canvas_text = ""
@@ -48,6 +87,7 @@ async def chat_stream(
 
     user_msg = Message(
         project_id=project_id,
+        user_id=user.id if role == "student" else None,
         role="user",
         content=body.message,
         metadata_json=json.dumps(metadata),
@@ -56,12 +96,20 @@ async def chat_stream(
     await db.commit()
     await db.refresh(user_msg)
 
-    result = await db.execute(
-        select(Message)
-        .where(Message.project_id == project_id)
-        .order_by(Message.created_at.desc())
-        .limit(20)
-    )
+    if role == "owner":
+        result = await db.execute(
+            select(Message)
+            .where(Message.project_id == project_id, Message.user_id.is_(None))
+            .order_by(Message.created_at.desc())
+            .limit(20)
+        )
+    else:
+        result = await db.execute(
+            select(Message)
+            .where(Message.project_id == project_id, Message.user_id == user.id)
+            .order_by(Message.created_at.desc())
+            .limit(20)
+        )
     recent = list(reversed(result.scalars().all()))
 
     history = [
@@ -76,18 +124,33 @@ async def chat_stream(
         .where(Module.project_id == project_id)
         .order_by(Module.sort_order)
     )
-    modules_data = [
-        {
+    modules_data = []
+    for m in mod_result.scalars().all():
+        points = []
+        for p in m.points:
+            checked = p.checked
+            if role == "student":
+                progress_result = await db.execute(
+                    select(UserPointProgress.checked).where(
+                        UserPointProgress.user_id == user.id,
+                        UserPointProgress.point_id == p.id,
+                    )
+                )
+                student_checked = progress_result.scalar_one_or_none()
+                if student_checked is not None:
+                    checked = student_checked
+            points.append({
+                "id": p.id,
+                "text": p.text,
+                "checked": checked,
+                "sort_order": p.sort_order,
+            })
+        modules_data.append({
             "id": m.id,
             "title": m.title,
-            "points": [
-                {"id": p.id, "text": p.text, "checked": p.checked, "sort_order": p.sort_order}
-                for p in m.points
-            ],
+            "points": points,
             "sort_order": m.sort_order,
-        }
-        for m in mod_result.scalars().all()
-    ]
+        })
 
     async def event_generator():
         full_response = ""
@@ -112,8 +175,26 @@ async def chat_stream(
                                 )
                                 result = await save_db.execute(stmt)
                                 point = result.scalar_one_or_none()
-                            if point:
+                            if point and role == "owner":
                                 point.checked = update["checked"]
+                            elif point and role == "student":
+                                progress_result = await save_db.execute(
+                                    select(UserPointProgress).where(
+                                        UserPointProgress.user_id == user.id,
+                                        UserPointProgress.point_id == point.id,
+                                    )
+                                )
+                                progress = progress_result.scalar_one_or_none()
+                                if progress:
+                                    progress.checked = update["checked"]
+                                else:
+                                    progress = UserPointProgress(
+                                        id=nanoid(),
+                                        user_id=user.id,
+                                        point_id=point.id,
+                                        checked=update["checked"],
+                                    )
+                                    save_db.add(progress)
                         await save_db.commit()
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'text': str(e)})}\n\n"
@@ -122,6 +203,7 @@ async def chat_stream(
                 async with async_session() as save_db:
                     assistant_msg = Message(
                         project_id=project_id,
+                        user_id=user.id if role == "student" else None,
                         role="assistant",
                         content=full_response,
                         metadata_json="{}",
