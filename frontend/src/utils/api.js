@@ -309,3 +309,79 @@ export async function fetchStats(projectId) {
   const res = await apiFetch(`/projects/${projectId}/stats`);
   return res.json();
 }
+
+// ---- Enrollment ----
+
+export async function joinProjectByCode(joinCode) {
+  const headers = await authHeaders();
+  const res = await fetch(`${BASE}/projects/join-by-code`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ join_code: joinCode }),
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => "Unknown error");
+    throw new Error(err);
+  }
+  return res.json();
+}
+
+export async function leaveProject(projectId) {
+  const headers = await authHeaders();
+  const res = await fetch(`${BASE}/projects/${projectId}/enroll`, {
+    method: "DELETE",
+    headers,
+  });
+  if (!res.ok) throw new Error(`Leave project failed: HTTP ${res.status}`);
+}
+
+// ---- Point Progress ----
+
+export async function updatePointProgress(projectId, moduleId, pointId, checked) {
+  const headers = await authHeaders();
+  const res = await fetch(
+    `${BASE}/projects/${projectId}/modules/${moduleId}/points/${pointId}/progress`,
+    {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({ checked }),
+    }
+  );
+  if (!res.ok) throw new Error(`Update point progress failed: HTTP ${res.status}`);
+  return res.json();
+}
+
+// ---- Enrolled Stats ----
+
+export async function getEnrolledStats(projectId) {
+  const res = await apiFetch(`/projects/${projectId}/stats/enrolled-stats`);
+  return res.json();
+}
+
+// ---- Chat Messages ----
+
+export async function fetchMessages(projectId) {
+  try {
+    const res = await apiFetch(`/projects/${projectId}/chat/messages`);
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
+
+// ---- Project ----
+
+export async function fetchProject(projectId) {
+  const res = await apiFetch(`/projects/${projectId}`);
+  return res.json();
+}
+
+export async function regenerateJoinCode(projectId) {
+  const headers = await authHeaders();
+  const res = await fetch(`${BASE}/projects/${projectId}/regenerate-code`, {
+    method: "PUT",
+    headers,
+  });
+  if (!res.ok) throw new Error(`Regenerate code failed: HTTP ${res.status}`);
+  return res.json();
+}
