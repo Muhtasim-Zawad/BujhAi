@@ -35,21 +35,27 @@ async def get_messages(
         result = await db.execute(
             select(Message)
             .where(Message.project_id == project_id, Message.user_id.is_(None))
-            .order_by(Message.created_at.desc())
+            .order_by(Message.created_at.desc(), Message.id.desc())
             .limit(20)
         )
     elif role == "student":
         result = await db.execute(
             select(Message)
             .where(Message.project_id == project_id, Message.user_id == user.id)
-            .order_by(Message.created_at.desc())
+            .order_by(Message.created_at.desc(), Message.id.desc())
             .limit(20)
         )
     else:
         return []
     messages = list(reversed(result.scalars().all()))
     return [
-        {"id": m.id, "role": m.role, "content": m.content, "metadata_json": m.metadata_json}
+        {
+            "id": m.id,
+            "role": m.role,
+            "content": m.content,
+            "created_at": m.created_at.isoformat() if m.created_at else None,
+            "metadata_json": m.metadata_json,
+        }
         for m in messages
     ]
 
@@ -100,14 +106,14 @@ async def chat_stream(
         result = await db.execute(
             select(Message)
             .where(Message.project_id == project_id, Message.user_id.is_(None))
-            .order_by(Message.created_at.desc())
+            .order_by(Message.created_at.desc(), Message.id.desc())
             .limit(20)
         )
     else:
         result = await db.execute(
             select(Message)
             .where(Message.project_id == project_id, Message.user_id == user.id)
-            .order_by(Message.created_at.desc())
+            .order_by(Message.created_at.desc(), Message.id.desc())
             .limit(20)
         )
     recent = list(reversed(result.scalars().all()))
@@ -153,16 +159,26 @@ async def chat_stream(
         })
 
     async def event_generator():
-        full_response = ""
+        evaluator_text = ""
+        student_text = ""
+        current_phase = None
         try:
             async for token_json in stream_chat_agent(
                 project_id, history, body.message, modules_data, canvas_text,
             ):
                 yield f"data: {token_json}\n\n"
                 data = json.loads(token_json)
-                if data.get("type") == "text":
-                    full_response += data["text"]
-                elif data.get("type") == "module_update":
+                tp = data.get("type")
+                if tp == "evaluator_start":
+                    current_phase = "evaluator"
+                elif tp == "student_start":
+                    current_phase = "student"
+                elif tp == "text":
+                    if current_phase == "evaluator":
+                        evaluator_text += data["text"]
+                    elif current_phase == "student":
+                        student_text += data["text"]
+                elif tp == "module_update":
                     async with async_session() as save_db:
                         for update in data["updates"]:
                             point = await save_db.get(ModulePoint, update["point_id"])
@@ -199,16 +215,24 @@ async def chat_stream(
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'text': str(e)})}\n\n"
         finally:
-            if full_response:
-                async with async_session() as save_db:
-                    assistant_msg = Message(
+            async with async_session() as save_db:
+                uid = user.id if role == "student" else None
+                if evaluator_text:
+                    save_db.add(Message(
                         project_id=project_id,
-                        user_id=user.id if role == "student" else None,
+                        user_id=uid,
                         role="assistant",
-                        content=full_response,
-                        metadata_json="{}",
-                    )
-                    save_db.add(assistant_msg)
-                    await save_db.commit()
+                        content=evaluator_text,
+                        metadata_json=json.dumps({"persona": "evaluator"}),
+                    ))
+                if student_text:
+                    save_db.add(Message(
+                        project_id=project_id,
+                        user_id=uid,
+                        role="assistant",
+                        content=student_text,
+                        metadata_json=json.dumps({"persona": "student"}),
+                    ))
+                await save_db.commit()
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")

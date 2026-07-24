@@ -269,7 +269,7 @@ export default function Dashboard() {
 										<div key={project.id} className="group relative">
 											<ProjectCard {...project} onAction={() => navigate(`/project/${project.id}`)} />
 											{project.join_code && (
-												<div className="absolute bottom-2 left-2 flex items-center gap-1 rounded bg-black/80 px-2 py-1 text-xs text-white">
+												<div className="absolute top-2 left-2 flex items-center gap-1 rounded bg-black/80 px-2 py-1 text-xs text-white">
 													<span className="font-mono tracking-wider">{project.join_code}</span>
 													<button
 														onClick={() => copyJoinCode(project.join_code)}

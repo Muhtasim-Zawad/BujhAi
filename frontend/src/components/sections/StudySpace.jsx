@@ -5,8 +5,7 @@ import ChatInterface from "@/components/layout/ChatInterface";
 import ChatRightSidebar from "@/components/layout/ChatRightSidebar";
 import Materials from "@/components/layout/Materials";
 import Stats from "@/components/layout/Stats";
-import { fetchProject } from "@/utils/api";
-import { supabase } from "@/lib/supabase";
+import { fetchProject, fetchCurrentUser } from "@/utils/api";
 
 export default function StudySpace() {
 	const { id } = useParams();
@@ -19,9 +18,11 @@ export default function StudySpace() {
 		if (!projectId) return;
 		(async () => {
 			try {
-				const { data: { user } } = await supabase.auth.getUser();
-				const project = await fetchProject(projectId);
-				setRole(project.user_id === user?.id ? "owner" : "student");
+				const [user, project] = await Promise.all([
+					fetchCurrentUser(),
+					fetchProject(projectId),
+				]);
+				setRole(project.user_id === user.id ? "owner" : "student");
 			} catch {
 				navigate("/dashboard");
 			}

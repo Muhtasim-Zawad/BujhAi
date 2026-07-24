@@ -57,22 +57,17 @@ export default function ChatInterface({ projectId, role }) {
 		if (!projectId) return;
 		fetchMessages(projectId).then((msgs) => {
 			if (msgs && msgs.length > 0) {
-				const formatted = msgs.map((m) => ({
-					id: m.id,
-					role: m.role,
-					persona: m.role === "assistant" ? "student" : null,
-					content: m.content,
-					timestamp: new Date(m.created_at) || new Date(),
-				}));
-				formatted.push({
-					id: "welcome",
-					role: "assistant",
-					persona: "student",
-					content: msgs.length > 0
-						? "Welcome back! Continue where you left off."
-						: "Hello! I'm BujhAI. How can I help you today?",
-					timestamp: new Date(),
-				});
+					const formatted = msgs.map((m) => {
+						let metadata = {};
+						try { metadata = JSON.parse(m.metadata_json || "{}"); } catch {}
+						return {
+							id: m.id,
+							role: m.role,
+							persona: m.role === "assistant" ? (metadata.persona || "student") : null,
+							content: m.content,
+							timestamp: m.created_at ? new Date(m.created_at) : new Date(),
+						};
+					});
 				setMessages(formatted);
 			} else {
 				setMessages([{
