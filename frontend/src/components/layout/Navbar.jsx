@@ -17,7 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { User, Settings, LogOut, BookOpen, Palette } from "lucide-react";
 import { useSession } from "@/hooks/useSession";
 
-export default function Navbar({ projects = [], onCreateProject, onOpenProject }) {
+export default function Navbar({ projects = [], onCreateProject, onJoinProject, onOpenProject }) {
 	const navigate = useNavigate();
 	const { user, signOut } = useSession();
 
@@ -100,6 +100,14 @@ export default function Navbar({ projects = [], onCreateProject, onOpenProject }
 
 				{/* Right actions */}
 				<div className="flex items-center gap-4">
+					<Button
+						variant="outline"
+						size="sm"
+						className="border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+						onClick={onJoinProject}
+					>
+						+Join
+					</Button>
 					<Button
 						variant="outline"
 						size="sm"

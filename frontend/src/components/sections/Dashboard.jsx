@@ -29,9 +29,9 @@ import { cn } from "@/lib/utils";
 import { Plus, Trash2, FolderOpen, BookOpen, BarChart3, LogOut, Copy, Check } from "lucide-react";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { supabase } from "@/lib/supabase";
 import {
 	fetchProjects,
+	fetchCurrentUser,
 	createProject,
 	deleteProject,
 	fetchResources,
@@ -61,6 +61,7 @@ export default function Dashboard() {
 	const [loading, setLoading] = useState(true);
 	const [section, setSection] = useState("projects");
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
+	const [isJoinOpen, setIsJoinOpen] = useState(false);
 	const [newProject, setNewProject] = useState({ title: "", description: "" });
 	const [deletingProject, setDeletingProject] = useState(null);
 	const [resourcesMap, setResourcesMap] = useState({});
@@ -74,13 +75,17 @@ export default function Dashboard() {
 	const [copiedCode, setCopiedCode] = useState(null);
 
 	useEffect(() => {
-		supabase.auth.getUser().then(({ data }) => {
-			setUserId(data?.user?.id || null);
-		});
-		fetchProjects()
-			.then((list) => setProjects(list.map(normalizeProject)))
-			.catch(() => {})
-			.finally(() => setLoading(false));
+		(async () => {
+			try {
+				const user = await fetchCurrentUser();
+				setUserId(user.id);
+			} catch {}
+			try {
+				const list = await fetchProjects();
+				setProjects(list.map(normalizeProject));
+			} catch {}
+			setLoading(false);
+		})();
 	}, []);
 
 	const ownedProjects = projects.filter((p) => p.user_id === userId);
@@ -185,6 +190,7 @@ export default function Dashboard() {
 			<Navbar
 				projects={projects}
 				onCreateProject={() => setIsCreateOpen(true)}
+				onJoinProject={() => setIsJoinOpen(true)}
 				onOpenProject={(project) => navigate(`/project/${project.id}`)}
 			/>
 			<div className="mx-auto max-w-6xl px-6 py-12">
@@ -195,29 +201,6 @@ export default function Dashboard() {
 					<p className="mt-2 text-lg text-muted-foreground">
 						Pick up where you left off or start something new.
 					</p>
-				</div>
-
-				{/* Join Project */}
-				<div className="mb-10 rounded-xl border-2 border-black bg-card p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-					<h2 className="font-head text-xl mb-3">Join a Project</h2>
-					<div className="flex gap-3">
-						<Input
-							placeholder="Enter join code (e.g. XK4M9P2)"
-							value={joinCode}
-							onChange={(e) => {
-								setJoinCode(e.target.value.toUpperCase());
-								setJoinError("");
-							}}
-							className="max-w-xs uppercase"
-							maxLength={7}
-						/>
-						<Button onClick={handleJoin} disabled={joining || !joinCode.trim()}>
-							{joining ? "Joining..." : "Join"}
-						</Button>
-					</div>
-					{joinError && (
-						<p className="mt-2 text-sm text-destructive">{joinError}</p>
-					)}
 				</div>
 
 				{/* Toggle buttons */}
@@ -245,10 +228,16 @@ export default function Dashboard() {
 						<div>
 							<div className="flex items-center justify-between mb-6">
 								<h2 className="font-head text-2xl">My Projects</h2>
-								<Button onClick={() => setIsCreateOpen(true)}>
-									<Plus className="size-4" />
-									Create Project
-								</Button>
+								<div className="flex gap-2">
+									<Button variant="outline" onClick={() => setIsJoinOpen(true)}>
+										<Plus className="size-4" />
+										Join
+									</Button>
+									<Button onClick={() => setIsCreateOpen(true)}>
+										<Plus className="size-4" />
+										Create Project
+									</Button>
+								</div>
 							</div>
 							{loading ? (
 								<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -502,6 +491,42 @@ export default function Dashboard() {
 						<DialogFooter>
 							<DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
 							<DialogClose render={<Button onClick={handleCreate} />}>Create</DialogClose>
+						</DialogFooter>
+					</DialogContent>
+				</Dialog>
+
+				{/* Join project dialog */}
+				<Dialog open={isJoinOpen} onOpenChange={(open) => {
+					setIsJoinOpen(open);
+					if (!open) { setJoinCode(""); setJoinError(""); }
+				}}>
+					<DialogContent className="bg-card">
+						<DialogHeader>
+							<DialogTitle>Join a Project</DialogTitle>
+							<DialogDescription>
+								Enter the join code to enroll in a project.
+							</DialogDescription>
+						</DialogHeader>
+						<div className="flex flex-col gap-3">
+							<Input
+								placeholder="Enter join code (e.g. XK4M9P2)"
+								value={joinCode}
+								onChange={(e) => {
+									setJoinCode(e.target.value.toUpperCase());
+									setJoinError("");
+								}}
+								className="uppercase"
+								maxLength={7}
+							/>
+							{joinError && (
+								<p className="text-sm text-destructive">{joinError}</p>
+							)}
+						</div>
+						<DialogFooter>
+							<DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+							<Button onClick={handleJoin} disabled={joining || !joinCode.trim()}>
+								{joining ? "Joining..." : "Join"}
+							</Button>
 						</DialogFooter>
 					</DialogContent>
 				</Dialog>

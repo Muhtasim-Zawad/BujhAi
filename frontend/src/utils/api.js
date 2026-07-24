@@ -385,3 +385,10 @@ export async function regenerateJoinCode(projectId) {
   if (!res.ok) throw new Error(`Regenerate code failed: HTTP ${res.status}`);
   return res.json();
 }
+
+// ---- Users ----
+
+export async function fetchCurrentUser() {
+  const res = await apiFetch("/users/me");
+  return res.json();
+}
