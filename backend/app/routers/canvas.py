@@ -5,24 +5,41 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.deps import get_current_user, verify_project_ownership
+from app.deps import get_current_user, get_enrollment_role, verify_project_access
 from app.models.canvas_scene import CanvasScene
 from app.models.project import Project
+from app.models.user import User
 from app.schemas.canvas import CanvasAnalyzeResponse, CanvasSaveRequest, CanvasSceneResponse
 from app.services.excalidraw import parse_scene
 from app.utils import nanoid
 
-router = APIRouter(prefix="/projects/{project_id}/canvas", tags=["canvas"], dependencies=[Depends(get_current_user), Depends(verify_project_ownership)])
+router = APIRouter(prefix="/projects/{project_id}/canvas", tags=["canvas"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("", response_model=CanvasSceneResponse | None)
-async def get_canvas(project_id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(CanvasScene)
-        .where(CanvasScene.project_id == project_id)
-        .order_by(CanvasScene.updated_at.desc())
-        .limit(1)
-    )
+async def get_canvas(
+    project_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+    _: Project = Depends(verify_project_access),
+):
+    role = await get_enrollment_role(project_id, user.id, db)
+    if role == "owner":
+        result = await db.execute(
+            select(CanvasScene)
+            .where(CanvasScene.project_id == project_id, CanvasScene.user_id.is_(None))
+            .order_by(CanvasScene.updated_at.desc())
+            .limit(1)
+        )
+    elif role == "student":
+        result = await db.execute(
+            select(CanvasScene)
+            .where(CanvasScene.project_id == project_id, CanvasScene.user_id == user.id)
+            .order_by(CanvasScene.updated_at.desc())
+            .limit(1)
+        )
+    else:
+        return None
     return result.scalar_one_or_none()
 
 
@@ -31,19 +48,28 @@ async def save_canvas(
     project_id: str,
     body: CanvasSaveRequest,
     db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
-    project = await db.get(Project, project_id)
-    if not project:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
-        )
+    role = await get_enrollment_role(project_id, user.id, db)
+    if role is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
-    result = await db.execute(
-        select(CanvasScene)
-        .where(CanvasScene.project_id == project_id)
-        .order_by(CanvasScene.updated_at.desc())
-        .limit(1)
-    )
+    is_owner = role == "owner"
+
+    if is_owner:
+        result = await db.execute(
+            select(CanvasScene)
+            .where(CanvasScene.project_id == project_id, CanvasScene.user_id.is_(None))
+            .order_by(CanvasScene.updated_at.desc())
+            .limit(1)
+        )
+    else:
+        result = await db.execute(
+            select(CanvasScene)
+            .where(CanvasScene.project_id == project_id, CanvasScene.user_id == user.id)
+            .order_by(CanvasScene.updated_at.desc())
+            .limit(1)
+        )
     scene = result.scalar_one_or_none()
 
     if scene:
@@ -52,6 +78,7 @@ async def save_canvas(
         scene = CanvasScene(
             id=nanoid(),
             project_id=project_id,
+            user_id=None if is_owner else user.id,
             scene_data=body.scene_data,
         )
         db.add(scene)
