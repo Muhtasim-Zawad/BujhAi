@@ -20,6 +20,7 @@ class ProjectUpdate(BaseModel):
 
 class ProjectResponse(BaseModel):
     id: str
+    user_id: str
     title: str
     description: str
     badge: str

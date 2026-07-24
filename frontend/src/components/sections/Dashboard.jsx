@@ -26,10 +26,20 @@ import {
 	DialogClose,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { Plus, Trash2, FolderOpen, BookOpen, BarChart3 } from "lucide-react";
+import { Plus, Trash2, FolderOpen, BookOpen, BarChart3, LogOut, Copy, Check } from "lucide-react";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchProjects, createProject, deleteProject, fetchResources, fetchStats } from "@/utils/api";
+import { supabase } from "@/lib/supabase";
+import {
+	fetchProjects,
+	createProject,
+	deleteProject,
+	fetchResources,
+	fetchStats,
+	joinProjectByCode,
+	leaveProject,
+	regenerateJoinCode,
+} from "@/utils/api";
 
 function normalizeProject(p) {
 	return {
@@ -47,6 +57,7 @@ const sections = [
 export default function Dashboard() {
 	const navigate = useNavigate();
 	const [projects, setProjects] = useState([]);
+	const [userId, setUserId] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [section, setSection] = useState("projects");
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -57,12 +68,23 @@ export default function Dashboard() {
 	const [loadingResources, setLoadingResources] = useState({});
 	const [loadingStats, setLoadingStats] = useState({});
 
+	const [joinCode, setJoinCode] = useState("");
+	const [joinError, setJoinError] = useState("");
+	const [joining, setJoining] = useState(false);
+	const [copiedCode, setCopiedCode] = useState(null);
+
 	useEffect(() => {
+		supabase.auth.getUser().then(({ data }) => {
+			setUserId(data?.user?.id || null);
+		});
 		fetchProjects()
 			.then((list) => setProjects(list.map(normalizeProject)))
 			.catch(() => {})
 			.finally(() => setLoading(false));
 	}, []);
+
+	const ownedProjects = projects.filter((p) => p.user_id === userId);
+	const enrolledProjects = projects.filter((p) => p.user_id !== userId);
 
 	async function loadResources(projectId) {
 		if (resourcesMap[projectId] || loadingResources[projectId]) return;
@@ -113,6 +135,51 @@ export default function Dashboard() {
 		setDeletingProject(null);
 	}
 
+	async function handleJoin() {
+		const code = joinCode.trim().toUpperCase();
+		if (!code) return;
+		setJoining(true);
+		setJoinError("");
+		try {
+			const result = await joinProjectByCode(code);
+			const res = await fetchProjects();
+			setProjects(res.map(normalizeProject));
+			setJoinCode("");
+		} catch (err) {
+			const msg = err.message || "Failed to join project";
+			if (msg.includes("404")) setJoinError("Invalid join code");
+			else if (msg.includes("409")) setJoinError("You are already enrolled");
+			else setJoinError(msg);
+		}
+		setJoining(false);
+	}
+
+	async function handleLeave(projectId) {
+		try {
+			await leaveProject(projectId);
+			setProjects((prev) => prev.filter((p) => p.id !== projectId));
+		} catch (err) {
+			console.error("Leave failed:", err);
+		}
+	}
+
+	async function handleRegenerateCode(projectId) {
+		try {
+			const updated = await regenerateJoinCode(projectId);
+			setProjects((prev) =>
+				prev.map((p) => (p.id === projectId ? { ...p, join_code: updated.join_code } : p))
+			);
+		} catch (err) {
+			console.error("Regenerate code failed:", err);
+		}
+	}
+
+	function copyJoinCode(code) {
+		navigator.clipboard.writeText(code);
+		setCopiedCode(code);
+		setTimeout(() => setCopiedCode(null), 2000);
+	}
+
 	return (
 		<div>
 			<Navbar
@@ -128,6 +195,29 @@ export default function Dashboard() {
 					<p className="mt-2 text-lg text-muted-foreground">
 						Pick up where you left off or start something new.
 					</p>
+				</div>
+
+				{/* Join Project */}
+				<div className="mb-10 rounded-xl border-2 border-black bg-card p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+					<h2 className="font-head text-xl mb-3">Join a Project</h2>
+					<div className="flex gap-3">
+						<Input
+							placeholder="Enter join code (e.g. XK4M9P2)"
+							value={joinCode}
+							onChange={(e) => {
+								setJoinCode(e.target.value.toUpperCase());
+								setJoinError("");
+							}}
+							className="max-w-xs uppercase"
+							maxLength={7}
+						/>
+						<Button onClick={handleJoin} disabled={joining || !joinCode.trim()}>
+							{joining ? "Joining..." : "Join"}
+						</Button>
+					</div>
+					{joinError && (
+						<p className="mt-2 text-sm text-destructive">{joinError}</p>
+					)}
 				</div>
 
 				{/* Toggle buttons */}
@@ -150,52 +240,98 @@ export default function Dashboard() {
 
 				{/* Projects */}
 				{section === "projects" && (
-					<div>
-						<div className="flex items-center justify-between mb-6">
-							<h2 className="font-head text-2xl">Projects</h2>
-							<Button onClick={() => setIsCreateOpen(true)}>
-								<Plus className="size-4" />
-								Create Project
-							</Button>
-						</div>
-						{loading ? (
-							<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-								{[1, 2, 3].map((i) => (
-									<div key={i} className="flex flex-col gap-3 rounded-xl border-2 border-black bg-card p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-										<Skeleton className="aspect-video w-full rounded-lg bg-muted" />
-										<Skeleton className="h-5 w-2/3 rounded bg-muted" />
-										<Skeleton className="h-4 w-full rounded bg-muted" />
-									</div>
-								))}
-							</div>
-						) : projects.length === 0 ? (
-							<div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-								<FolderOpen className="size-12 text-muted-foreground" />
-								<p className="text-lg font-medium text-muted-foreground">
-									No projects yet
-								</p>
-								<p className="text-sm text-muted-foreground">
-									Create your first project to get started.
-								</p>
+					<div className="flex flex-col gap-10">
+						{/* My Projects */}
+						<div>
+							<div className="flex items-center justify-between mb-6">
+								<h2 className="font-head text-2xl">My Projects</h2>
 								<Button onClick={() => setIsCreateOpen(true)}>
 									<Plus className="size-4" />
 									Create Project
 								</Button>
 							</div>
-						) : (
-							<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-								{projects.map((project) => (
-									<div key={project.id} className="group relative">
-										<ProjectCard {...project} onAction={() => navigate(`/project/${project.id}`)} />
-										<button
-											onClick={() => setDeletingProject(project)}
-											className="absolute top-2 right-2 z-40 cursor-pointer rounded-sm bg-destructive p-1.5 text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
-											title="Delete project"
-										>
-											<Trash2 className="size-4" />
-										</button>
-									</div>
-								))}
+							{loading ? (
+								<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+									{[1, 2, 3].map((i) => (
+										<div key={i} className="flex flex-col gap-3 rounded-xl border-2 border-black bg-card p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+											<Skeleton className="aspect-video w-full rounded-lg bg-muted" />
+											<Skeleton className="h-5 w-2/3 rounded bg-muted" />
+											<Skeleton className="h-4 w-full rounded bg-muted" />
+										</div>
+									))}
+								</div>
+							) : ownedProjects.length === 0 ? (
+								<div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+									<FolderOpen className="size-12 text-muted-foreground" />
+									<p className="text-lg font-medium text-muted-foreground">
+										No projects yet
+									</p>
+									<p className="text-sm text-muted-foreground">
+										Create your first project to get started.
+									</p>
+									<Button onClick={() => setIsCreateOpen(true)}>
+										<Plus className="size-4" />
+										Create Project
+									</Button>
+								</div>
+							) : (
+								<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+									{ownedProjects.map((project) => (
+										<div key={project.id} className="group relative">
+											<ProjectCard {...project} onAction={() => navigate(`/project/${project.id}`)} />
+											{project.join_code && (
+												<div className="absolute bottom-2 left-2 flex items-center gap-1 rounded bg-black/80 px-2 py-1 text-xs text-white">
+													<span className="font-mono tracking-wider">{project.join_code}</span>
+													<button
+														onClick={() => copyJoinCode(project.join_code)}
+														className="cursor-pointer hover:text-primary"
+														title="Copy join code"
+													>
+														{copiedCode === project.join_code ? <Check className="size-3" /> : <Copy className="size-3" />}
+													</button>
+													<button
+														onClick={() => handleRegenerateCode(project.id)}
+														className="cursor-pointer hover:text-primary ml-1"
+														title="Regenerate join code"
+													>
+														<svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+															<path d="M1 4v6h6M23 20v-6h-6" />
+															<path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" />
+														</svg>
+													</button>
+												</div>
+											)}
+											<button
+												onClick={() => setDeletingProject(project)}
+												className="absolute top-2 right-2 z-40 cursor-pointer rounded-sm bg-destructive p-1.5 text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
+												title="Delete project"
+											>
+												<Trash2 className="size-4" />
+											</button>
+										</div>
+									))}
+								</div>
+							)}
+						</div>
+
+						{/* Enrolled Projects */}
+						{enrolledProjects.length > 0 && (
+							<div>
+								<h2 className="font-head text-2xl mb-6">Enrolled Projects</h2>
+								<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+									{enrolledProjects.map((project) => (
+										<div key={project.id} className="group relative">
+											<ProjectCard {...project} onAction={() => navigate(`/project/${project.id}`)} />
+											<button
+												onClick={() => handleLeave(project.id)}
+												className="absolute top-2 right-2 z-40 flex cursor-pointer items-center gap-1 rounded-sm bg-destructive p-1.5 text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
+												title="Leave project"
+											>
+												<LogOut className="size-4" />
+											</button>
+										</div>
+									))}
+								</div>
 							</div>
 						)}
 					</div>
