@@ -85,6 +85,7 @@ export default function Materials({ projectId }) {
 		try {
 			const result = await uploadMaterial(projectId, file);
 			setMaterials((prev) => [...prev, result.material]);
+			setModules((prev) => [...prev, ...(result.generated_modules || [])]);
 			window.dispatchEvent(new CustomEvent("materials-changed"));
 			if (result.generated_modules?.length) {
 				window.dispatchEvent(
