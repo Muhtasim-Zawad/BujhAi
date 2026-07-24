@@ -32,8 +32,14 @@ export default function ChatRightSidebar({ projectId }) {
 	const [editingTitle, setEditingTitle] = useState("");
 
 	useEffect(() => {
+		if (!projectId) return;
+		fetchModules(projectId).then(setModules).catch(() => {});
+	}, [projectId]);
+
+	useEffect(() => {
 		const handler = () => {
 			if (!projectId) return;
+			console.log("[ChatRightSidebar] module-update event received, refetching modules");
 			fetchModules(projectId).then(setModules).catch(() => {});
 		};
 		window.addEventListener("module-update", handler);
@@ -42,7 +48,17 @@ export default function ChatRightSidebar({ projectId }) {
 
 	useEffect(() => {
 		if (!projectId) return;
-		fetchModules(projectId).then(setModules).catch(() => {});
+		console.log("[ChatRightSidebar] Starting 10s polling for modules");
+		const interval = setInterval(() => {
+			fetchModules(projectId).then((data) => {
+				console.log("[ChatRightSidebar] Polling fetched", data.length, "modules");
+				setModules(data);
+			}).catch(() => {});
+		}, 10000);
+		return () => {
+			console.log("[ChatRightSidebar] Clearing polling interval");
+			clearInterval(interval);
+		};
 	}, [projectId]);
 
 	useEffect(() => {

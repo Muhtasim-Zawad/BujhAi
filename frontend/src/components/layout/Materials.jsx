@@ -74,6 +74,16 @@ export default function Materials({ projectId }) {
 		]).finally(() => setLoading(false));
 	}, [projectId]);
 
+	useEffect(() => {
+		if (!projectId) return;
+		const handler = () => {
+			console.log("[Materials] module-update event received, refetching modules");
+			fetchModules(projectId).then(setModules).catch(() => {});
+		};
+		window.addEventListener("module-update", handler);
+		return () => window.removeEventListener("module-update", handler);
+	}, [projectId]);
+
 	async function handleUpload() {
 		fileInputRef.current?.click();
 	}

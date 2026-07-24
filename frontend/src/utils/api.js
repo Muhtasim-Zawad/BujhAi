@@ -70,6 +70,7 @@ export async function streamChat(projectId, message, callbacks, canvasData = nul
             callbacks.onText?.(data.text);
             break;
           case "module_update":
+            console.log("[api.js] SSE module_update event received:", JSON.stringify(data.updates));
             callbacks.onModuleUpdate?.(data.updates);
             break;
           case "student_start":

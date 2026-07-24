@@ -103,6 +103,15 @@ async def chat_stream(
                     async with async_session() as save_db:
                         for update in data["updates"]:
                             point = await save_db.get(ModulePoint, update["point_id"])
+                            if not point:
+                                mod_id = update.get("module_id")
+                                txt = update.get("point_id", "").strip()
+                                stmt = select(ModulePoint).where(
+                                    ModulePoint.module_id == mod_id,
+                                    ModulePoint.text == txt,
+                                )
+                                result = await save_db.execute(stmt)
+                                point = result.scalar_one_or_none()
                             if point:
                                 point.checked = update["checked"]
                         await save_db.commit()

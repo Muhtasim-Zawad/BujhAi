@@ -131,6 +131,7 @@ export default function ChatInterface({ projectId }) {
 	}, []);
 
 	const onModuleUpdate = useCallback((updates) => {
+		console.log("[ChatInterface] Dispatching module-update event with", updates.length, "updates");
 		window.dispatchEvent(new CustomEvent("module-update", { detail: updates }));
 	}, []);
 

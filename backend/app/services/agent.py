@@ -26,19 +26,17 @@ def _get_chat() -> ChatGroq:
     return _chat
 
 
-EVALUATOR_SYSTEM = """You are an evaluator. Your role is to explain concepts from the learning materials, provide detailed feedback on the student's understanding, and track their progress against module checklist points. Keep responses encouraging and specific.
+EVALUATOR_SYSTEM = """You are an evaluator. Your role is to assess the student's understanding against the module checklist points and provide feedback. Do NOT proactively teach or lecture — respond specifically to what the student said and evaluate it. Keep responses encouraging and specific.
 
-Respond ONLY with valid JSON — no markdown, no extra text:
-{
-  "evaluation_text": "Your explanation, feedback, and progress tracking...",
-  "module_updates": [
-    {"module_id": "...", "point_id": "...", "checked": true}
-  ]
-}
-- Set checked=true if the answer demonstrates that point
+Respond with valid JSON. The JSON must contain these fields:
+- evaluation_text: your assessment, feedback on their answer, and progress summary
+- module_updates: an array of objects, each with module_id, point_id, and checked (boolean)
+
+Rules for module_updates:
+- Set checked=true if the answer demonstrates understanding of that point
 - Set checked=false if it does NOT
 - Only include points that are directly relevant to the answer
-- The evaluation_text should explain concepts, give encouraging feedback, and summarize progress"""
+- Use the EXACT point_id and module_id values shown in the Module Progress section below"""
 
 STUDENT_SYSTEM = """You are a student tutor. Your ONLY role is to ask the user questions to check their understanding of the learning materials.
 
@@ -47,7 +45,7 @@ Rules:
 - Ask one question at a time
 - Base your questions on the module points and material content
 - Keep questions clear and focused
-- Reference specific module points or material sections when possible"""
+- Reference module content naturally (e.g. "from the materials", "based on what you learned") — do NOT expose internal point IDs"""
 
 
 class AgentState(TypedDict):
@@ -80,7 +78,7 @@ def retrieve_node(state: AgentState) -> dict:
     return {"context_chunks": chunks}
 
 
-def _format_core_context(state: AgentState) -> str:
+def _format_core_context(state: AgentState, show_point_ids: bool = False) -> str:
     parts = []
     chunks = state.get("context_chunks") or []
     if chunks:
@@ -103,7 +101,16 @@ def _format_core_context(state: AgentState) -> str:
                 pts = m.get("points", [])
                 checked_count = sum(1 for p in pts if p.get("checked"))
                 total = len(pts)
-                parts.append(f"{m['title']}: {checked_count}/{total} complete")
+                if show_point_ids:
+                    parts.append(f"Module \"{m['title']}\" (module_id={m['id']}): {checked_count}/{total} complete")
+                    for p in pts:
+                        status = "checked" if p.get("checked") else "unchecked"
+                        parts.append(f"  - point_id={p['id']}: \"{p['text']}\" [{status}]")
+                else:
+                    parts.append(f"Module \"{m['title']}\": {checked_count}/{total} complete")
+                    for p in pts:
+                        status = "checked" if p.get("checked") else "unchecked"
+                        parts.append(f"  - \"{p['text']}\" [{status}]")
     except (json.JSONDecodeError, KeyError):
         pass
 
@@ -111,7 +118,7 @@ def _format_core_context(state: AgentState) -> str:
 
 
 async def evaluate_node(state: AgentState) -> dict:
-    context = _format_core_context(state)
+    context = _format_core_context(state, show_point_ids=True)
 
     prompt = f"""Current rubric progress and materials:
 {context}
@@ -119,18 +126,29 @@ async def evaluate_node(state: AgentState) -> dict:
 Student's message to evaluate:
 {state['user_input']}"""
 
-    response = await _get_chat().ainvoke([
+    json_llm = _get_chat().bind(response_format={"type": "json_object"})
+    response = await json_llm.ainvoke([
         SystemMessage(content=EVALUATOR_SYSTEM),
         HumanMessage(content=prompt),
     ])
 
     raw = response.content or "{}"
-    parsed = _parse_json(raw)
-    eval_text = (parsed or {}).get("evaluation_text", "")
-    updates = (parsed or {}).get("module_updates", [])
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        import logging
+        logging.warning("[agent] evaluate_node: failed to parse JSON response, raw=%s", raw[:200])
+        return {"evaluator_response": raw, "module_updates": []}
+
+    updates = parsed.get("module_updates", [])
+    import logging
+    if updates:
+        logging.info("[agent] evaluate_node: %d module_updates returned", len(updates))
+    else:
+        logging.info("[agent] evaluate_node: no module_updates in response")
 
     return {
-        "evaluator_response": eval_text,
+        "evaluator_response": parsed.get("evaluation_text", raw),
         "module_updates": updates,
     }
 
@@ -157,21 +175,6 @@ async def student_node(state: AgentState) -> dict:
         content += chunk.content if hasattr(chunk, "content") else ""
 
     return {"student_response": content}
-
-
-def _parse_json(raw: str) -> dict | None:
-    import re
-    match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw, re.DOTALL)
-    if match:
-        raw = match.group(1)
-    start = raw.find("{")
-    end = raw.rfind("}")
-    if start >= 0 and end > start:
-        try:
-            return json.loads(raw[start: end + 1])
-        except json.JSONDecodeError:
-            pass
-    return None
 
 
 def build_graph():
@@ -234,6 +237,8 @@ async def stream_chat_agent(
             if eval_text:
                 yield json.dumps({"type": "text", "text": eval_text})
             if updates:
+                import logging
+                logging.info("[agent] stream_chat_agent: yielding module_update event with %d updates", len(updates))
                 yield json.dumps({"type": "module_update", "updates": updates})
             yield json.dumps({"type": "student_start"})
             evaluator_done = True
