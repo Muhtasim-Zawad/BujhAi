@@ -3,10 +3,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.deps import get_current_user, verify_project_ownership
+from app.deps import get_current_user, get_enrollment_role, verify_project_access, verify_project_owner
 from app.models.module import Module, ModulePoint
 from app.models.project import Project
 from app.models.user import User
+from app.models.user_point_progress import UserPointProgress
 from app.schemas.module import (
     ModuleCreate,
     ModulePointCreate,
@@ -14,11 +15,12 @@ from app.schemas.module import (
     ModulePointUpdate,
     ModuleResponse,
     ModuleUpdate,
+    PointProgressUpdate,
 )
 from app.utils import nanoid
 from fastapi import APIRouter, Depends, HTTPException, status
 
-router = APIRouter(prefix="/projects/{project_id}/modules", tags=["modules"], dependencies=[Depends(get_current_user), Depends(verify_project_ownership)])
+router = APIRouter(prefix="/projects/{project_id}/modules", tags=["modules"], dependencies=[Depends(get_current_user)])
 
 
 _BASE = select(Module).options(selectinload(Module.points))
@@ -30,7 +32,11 @@ def _sort_points(module: Module) -> None:
 
 
 @router.get("", response_model=list[ModuleResponse])
-async def list_modules(project_id: str, db: AsyncSession = Depends(get_db)):
+async def list_modules(
+    project_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: Project = Depends(verify_project_access),
+):
     result = await db.execute(
         _BASE.where(Module.project_id == project_id).order_by(Module.sort_order)
     )
@@ -45,11 +51,8 @@ async def create_module(
     project_id: str,
     body: ModuleCreate,
     db: AsyncSession = Depends(get_db),
+    _: Project = Depends(verify_project_owner),
 ):
-    project = await db.get(Project, project_id)
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-
     count = await db.scalar(
         select(func.count()).select_from(Module).where(Module.project_id == project_id)
     )
@@ -73,6 +76,7 @@ async def update_module(
     module_id: str,
     body: ModuleUpdate,
     db: AsyncSession = Depends(get_db),
+    _: Project = Depends(verify_project_owner),
 ):
     result = await db.execute(
         _BASE.where(Module.id == module_id, Module.project_id == project_id)
@@ -92,6 +96,7 @@ async def delete_module(
     project_id: str,
     module_id: str,
     db: AsyncSession = Depends(get_db),
+    _: Project = Depends(verify_project_owner),
 ):
     module = await db.get(Module, module_id)
     if not module or module.project_id != project_id:
@@ -106,6 +111,7 @@ async def create_point(
     module_id: str,
     body: ModulePointCreate,
     db: AsyncSession = Depends(get_db),
+    _: Project = Depends(verify_project_owner),
 ):
     module = await db.get(Module, module_id)
     if not module or module.project_id != project_id:
@@ -136,6 +142,7 @@ async def update_point(
     point_id: str,
     body: ModulePointUpdate,
     db: AsyncSession = Depends(get_db),
+    _: Project = Depends(verify_project_owner),
 ):
     module = await db.get(Module, module_id)
     if not module or module.project_id != project_id:
@@ -161,6 +168,7 @@ async def delete_point(
     module_id: str,
     point_id: str,
     db: AsyncSession = Depends(get_db),
+    _: Project = Depends(verify_project_owner),
 ):
     module = await db.get(Module, module_id)
     if not module or module.project_id != project_id:
@@ -172,3 +180,53 @@ async def delete_point(
 
     await db.delete(point)
     await db.commit()
+
+
+@router.put("/{module_id}/points/{point_id}/progress", response_model=ModulePointResponse)
+async def update_point_progress(
+    project_id: str,
+    module_id: str,
+    point_id: str,
+    body: PointProgressUpdate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    module = await db.get(Module, module_id)
+    if not module or module.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Module not found")
+
+    point = await db.get(ModulePoint, point_id)
+    if not point or point.module_id != module_id:
+        raise HTTPException(status_code=404, detail="Point not found")
+
+    role = await get_enrollment_role(project_id, user.id, db)
+
+    if role == "owner":
+        point.checked = body.checked
+        await db.commit()
+        await db.refresh(point)
+        return point
+
+    if role == "student":
+        result = await db.execute(
+            select(UserPointProgress).where(
+                UserPointProgress.user_id == user.id,
+                UserPointProgress.point_id == point_id,
+            )
+        )
+        progress = result.scalar_one_or_none()
+        if progress:
+            progress.checked = body.checked
+        else:
+            progress = UserPointProgress(
+                id=nanoid(),
+                user_id=user.id,
+                point_id=point_id,
+                checked=body.checked,
+            )
+            db.add(progress)
+        await db.commit()
+        point.checked = body.checked
+        return point
+
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")

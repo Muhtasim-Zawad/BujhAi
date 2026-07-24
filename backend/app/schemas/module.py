@@ -13,6 +13,10 @@ class ModulePointUpdate(BaseModel):
     checked: bool | None = None
 
 
+class PointProgressUpdate(BaseModel):
+    checked: bool
+
+
 class ModulePointResponse(BaseModel):
     id: str
     module_id: str
