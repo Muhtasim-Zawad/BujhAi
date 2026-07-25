@@ -80,11 +80,14 @@ async def generate_from_materials(
     if module_ids:
         await db.execute(delete(ModulePoint).where(ModulePoint.module_id.in_(module_ids)))
     await db.execute(delete(Module).where(Module.project_id == project_id))
-    await db.execute(
-        update(ProjectEnrollment)
-        .where(ProjectEnrollment.project_id == project_id)
-        .values(completed_at=None)
-    )
+    try:
+        await db.execute(
+            update(ProjectEnrollment)
+            .where(ProjectEnrollment.project_id == project_id)
+            .values(completed_at=None)
+        )
+    except Exception:
+        pass
 
     modules_data = parsed.get("modules") or []
     resources_data = parsed.get("resources") or []

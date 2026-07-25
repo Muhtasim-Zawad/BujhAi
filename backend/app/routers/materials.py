@@ -139,11 +139,14 @@ async def delete_material_route(
         ))
         await db.execute(delete(Module).where(Module.project_id == project_id))
         await db.execute(delete(Resource).where(Resource.project_id == project_id))
-        await db.execute(
-            update(ProjectEnrollment)
-            .where(ProjectEnrollment.project_id == project_id)
-            .values(completed_at=None)
-        )
+        try:
+            await db.execute(
+                update(ProjectEnrollment)
+                .where(ProjectEnrollment.project_id == project_id)
+                .values(completed_at=None)
+            )
+        except Exception:
+            pass
         await db.commit()
 
 
