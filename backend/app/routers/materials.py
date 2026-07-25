@@ -147,6 +147,14 @@ async def delete_material_route(
             )
         except Exception:
             pass
+        try:
+            await db.execute(
+                update(Project)
+                .where(Project.id == project_id)
+                .values(completed_at=None)
+            )
+        except Exception:
+            pass
         await db.commit()
 
 

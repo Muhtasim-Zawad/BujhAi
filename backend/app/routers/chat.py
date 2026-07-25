@@ -243,6 +243,26 @@ async def chat_stream(
                                     enrollment.completed_at = datetime.datetime.utcnow()
                                     await save_db.commit()
                                 yield json.dumps({"type": "course_complete"})
+                        elif role == "owner":
+                            total = await save_db.scalar(
+                                select(func.count())
+                                .select_from(ModulePoint)
+                                .join(Module)
+                                .where(Module.project_id == project_id)
+                            )
+                            completed = await save_db.scalar(
+                                select(func.count())
+                                .select_from(ModulePoint)
+                                .where(ModulePoint.checked == True)
+                                .join(Module)
+                                .where(Module.project_id == project_id)
+                            )
+                            if total and completed is not None and completed >= total:
+                                project = await save_db.get(Project, project_id)
+                                if project and not project.completed_at:
+                                    project.completed_at = datetime.datetime.utcnow()
+                                    await save_db.commit()
+                                yield json.dumps({"type": "course_complete"})
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'text': str(e)})}\n\n"
         finally:

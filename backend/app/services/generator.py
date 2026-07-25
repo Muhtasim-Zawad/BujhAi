@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.enrollment import ProjectEnrollment
 from app.models.module import Module, ModulePoint
+from app.models.project import Project
 from app.models.resource import Resource
 
 from app.services.rag import search as rag_search
@@ -84,6 +85,14 @@ async def generate_from_materials(
         await db.execute(
             update(ProjectEnrollment)
             .where(ProjectEnrollment.project_id == project_id)
+            .values(completed_at=None)
+        )
+    except Exception:
+        pass
+    try:
+        await db.execute(
+            update(Project)
+            .where(Project.id == project_id)
             .values(completed_at=None)
         )
     except Exception:

@@ -23,6 +23,7 @@ class Project(Base):
     updated_at: Mapped[datetime.datetime] = mapped_column(
         server_default=func.now(), onupdate=func.now()
     )
+    completed_at: Mapped[datetime.datetime | None] = mapped_column(nullable=True)
 
     user = relationship("User", back_populates="projects")
     modules = relationship("Module", back_populates="project", cascade="all, delete-orphan")
