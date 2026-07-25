@@ -27,6 +27,7 @@ const AVATARS = {
 
 export default function ChatInterface({ projectId, role }) {
 	const [messages, setMessages] = useState([]);
+	const [messagesLoading, setMessagesLoading] = useState(true);
 	const [input, setInput] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 	const [showCanvas, setShowCanvas] = useState(false);
@@ -55,6 +56,7 @@ export default function ChatInterface({ projectId, role }) {
 
 	useEffect(() => {
 		if (!projectId) return;
+		setMessagesLoading(true);
 		fetchMessages(projectId).then((msgs) => {
 			if (msgs && msgs.length > 0) {
 					const formatted = msgs.map((m) => {
@@ -86,6 +88,8 @@ export default function ChatInterface({ projectId, role }) {
 				content: "Hello! I'm BujhAI. How can I help you today?",
 				timestamp: new Date(),
 			}]);
+		}).finally(() => {
+			setMessagesLoading(false);
 		});
 	}, [projectId]);
 
@@ -148,6 +152,10 @@ export default function ChatInterface({ projectId, role }) {
 				timestamp: new Date(),
 			},
 		]);
+	}, []);
+
+	const onCourseComplete = useCallback(() => {
+		window.dispatchEvent(new CustomEvent("course-complete"));
 	}, []);
 
 	const onFinish = useCallback(() => {
@@ -220,6 +228,7 @@ export default function ChatInterface({ projectId, role }) {
 					onText,
 					onModuleUpdate,
 					onStudentStart,
+					onCourseComplete,
 					onFinish,
 					onError,
 				},
@@ -327,8 +336,20 @@ export default function ChatInterface({ projectId, role }) {
 
 			{/* Messages */}
 			<div className="flex-1 overflow-y-auto px-4 py-6">
-				<div className="mx-auto flex max-w-3xl flex-col gap-4">
-					{messages.map((message) => (
+			<div className="mx-auto flex max-w-3xl flex-col gap-4">
+				{messagesLoading ? (
+					<div className="flex gap-3">
+						<div className="flex size-9 shrink-0 items-center justify-center rounded-xl border-2 border-black bg-primary shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+							<Bot className="size-5 text-primary-foreground" />
+						</div>
+						<div className="flex max-w-[80%] items-center gap-2 rounded-xl border-2 border-black bg-card px-4 py-3 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+							<Skeleton className="size-2 animate-bounce rounded-full bg-foreground" />
+							<Skeleton className="size-2 animate-bounce rounded-full bg-foreground [animation-delay:0.1s]" />
+							<Skeleton className="size-2 animate-bounce rounded-full bg-foreground [animation-delay:0.2s]" />
+						</div>
+					</div>
+				) : (
+					messages.map((message) => (
 						<div
 							key={message.id}
 							className={cn(
@@ -380,21 +401,22 @@ export default function ChatInterface({ projectId, role }) {
 								</div>
 							)}
 						</div>
-					))}
-					{isLoading && (
-						<div className="flex gap-3">
-							<div className="flex size-9 shrink-0 items-center justify-center rounded-xl border-2 border-black bg-primary shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
-								<Bot className="size-5 text-primary-foreground" />
-							</div>
-							<div className="flex max-w-[80%] items-center gap-2 rounded-xl border-2 border-black bg-card px-4 py-3 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
-								<Skeleton className="size-2 animate-bounce rounded-full bg-foreground" />
-								<Skeleton className="size-2 animate-bounce rounded-full bg-foreground [animation-delay:0.1s]" />
-								<Skeleton className="size-2 animate-bounce rounded-full bg-foreground [animation-delay:0.2s]" />
-							</div>
+					))
+				)}
+				{isLoading && (
+					<div className="flex gap-3">
+						<div className="flex size-9 shrink-0 items-center justify-center rounded-xl border-2 border-black bg-primary shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+							<Bot className="size-5 text-primary-foreground" />
 						</div>
-					)}
-					<div ref={messagesEndRef} />
-				</div>
+						<div className="flex max-w-[80%] items-center gap-2 rounded-xl border-2 border-black bg-card px-4 py-3 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+							<Skeleton className="size-2 animate-bounce rounded-full bg-foreground" />
+							<Skeleton className="size-2 animate-bounce rounded-full bg-foreground [animation-delay:0.1s]" />
+							<Skeleton className="size-2 animate-bounce rounded-full bg-foreground [animation-delay:0.2s]" />
+						</div>
+					</div>
+				)}
+				<div ref={messagesEndRef} />
+			</div>
 			</div>
 
 			{/* Canvas panel */}

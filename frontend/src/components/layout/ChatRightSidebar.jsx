@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ChevronRight, Plus, Trash2, Edit3 } from "lucide-react";
+import { ChevronRight, Plus, Trash2, Edit3, Trophy } from "lucide-react";
 import {
 	Accordion,
 	AccordionItem,
@@ -28,6 +28,8 @@ import {
 export default function ChatRightSidebar({ projectId, role }) {
 	const [isCollapsed, setIsCollapsed] = useState(false);
 	const [modules, setModules] = useState([]);
+	const [modulesLoading, setModulesLoading] = useState(true);
+	const [courseCompleted, setCourseCompleted] = useState(false);
 	const [editingModuleId, setEditingModuleId] = useState(null);
 	const [editingTitle, setEditingTitle] = useState("");
 
@@ -35,7 +37,10 @@ export default function ChatRightSidebar({ projectId, role }) {
 
 	useEffect(() => {
 		if (!projectId) return;
-		fetchModules(projectId).then(setModules).catch(() => {});
+		setModulesLoading(true);
+		fetchModules(projectId).then(setModules).catch(() => {}).finally(() => {
+			setModulesLoading(false);
+		});
 	}, [projectId]);
 
 	useEffect(() => {
@@ -75,6 +80,18 @@ export default function ChatRightSidebar({ projectId, role }) {
 		0,
 	);
 	const globalProgress = totalPoints > 0 ? Math.round((checkedPoints / totalPoints) * 100) : 0;
+
+	useEffect(() => {
+		if (globalProgress === 100 && modules.length > 0) {
+			setCourseCompleted(true);
+		}
+	}, [globalProgress, modules]);
+
+	useEffect(() => {
+		const handler = () => setCourseCompleted(true);
+		window.addEventListener("course-complete", handler);
+		return () => window.removeEventListener("course-complete", handler);
+	}, []);
 
 	async function addModule() {
 		try {
@@ -209,12 +226,32 @@ export default function ChatRightSidebar({ projectId, role }) {
 
 			{!isCollapsed && (
 				<div className="flex flex-col gap-4 p-3 overflow-y-auto flex-1">
-					<Progress value={globalProgress}>
-						<ProgressLabel>Overall Progress</ProgressLabel>
-						<ProgressValue>{globalProgress}%</ProgressValue>
-					</Progress>
+					{courseCompleted ? (
+						<div className="flex flex-col items-center gap-2 rounded-xl border-2 border-green-500 bg-green-50 p-4 animate-in fade-in slide-in-from-top-2 duration-500">
+							<Trophy className="size-8 text-yellow-500" />
+							<span className="text-sm font-bold text-green-700">Course Complete!</span>
+							<span className="text-xs text-green-600 text-center">You've completed all learning objectives. Great work!</span>
+						</div>
+					) : (
+						<Progress value={globalProgress}>
+							<ProgressLabel>Overall Progress</ProgressLabel>
+							<ProgressValue>{globalProgress}%</ProgressValue>
+						</Progress>
+					)}
 
-					{modules.length > 0 ? (
+					{modulesLoading ? (
+						<div className="flex flex-col gap-3 py-4">
+							{[...Array(3)].map((_, i) => (
+								<div key={i} className="flex flex-col gap-2">
+									<div className="h-5 w-3/4 animate-pulse rounded bg-muted-foreground/20" />
+									<div className="flex flex-col gap-1.5 pl-2">
+										<div className="h-4 w-full animate-pulse rounded bg-muted-foreground/20" />
+										<div className="h-4 w-5/6 animate-pulse rounded bg-muted-foreground/20" />
+									</div>
+								</div>
+							))}
+						</div>
+				) : modules.length > 0 ? (
 						<div className="flex flex-col gap-2">
 							{modules.map((module) => {
 								const progress = getModuleProgress(module);

@@ -22,6 +22,7 @@ class ProjectEnrollment(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(
         server_default=func.now()
     )
+    completed_at: Mapped[datetime.datetime | None] = mapped_column(nullable=True)
 
     project = relationship("Project", back_populates="enrollments")
     user = relationship("User", back_populates="enrollments")

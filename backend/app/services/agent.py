@@ -37,7 +37,10 @@ Rules for module_updates:
 - Set checked=true if the answer demonstrates understanding of that point
 - Set checked=false if it does NOT
 - Only include points that are directly relevant to the answer
-- Use the EXACT point_id and module_id values shown in the Module Progress section below"""
+- Use the EXACT point_id and module_id values shown in the Module Progress section below
+
+ALL MODULES COMPLETE:
+If ALL points across ALL modules are already checked (the student has demonstrated everything), do NOT set checked=false on any point. Instead, set module_updates to an empty array and include a congratulatory message in evaluation_text celebrating their achievement. Mention they have completed all learning objectives."""
 
 STUDENT_SYSTEM = """You are a student tutor. Your ONLY role is to ask the user questions to check their understanding of the learning materials.
 
@@ -47,7 +50,10 @@ Rules:
 - Base your questions on the module points and material content
 - Focus on uncompleted points first
 - Keep questions clear and focused
-- Reference module content naturally (e.g. "from the materials", "based on what you learned") — do NOT expose internal point IDs"""
+- Reference module content naturally (e.g. "from the materials", "based on what you learned") — do NOT expose internal point IDs
+
+ALL MODULES COMPLETE:
+If ALL module points are already checked, do NOT ask new questions. Instead, congratulate the student and suggest next steps such as reviewing the material, practicing further, or exploring a new topic. Keep it encouraging."""
 
 
 class AgentState(TypedDict):

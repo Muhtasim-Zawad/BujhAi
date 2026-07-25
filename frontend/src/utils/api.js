@@ -76,6 +76,9 @@ export async function streamChat(projectId, message, callbacks, canvasData = nul
           case "student_start":
             callbacks.onStudentStart?.();
             break;
+          case "course_complete":
+            callbacks.onCourseComplete?.();
+            break;
           case "finish":
             callbacks.onFinish?.(data.finishReason);
             break;

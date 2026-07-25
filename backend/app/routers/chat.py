@@ -1,14 +1,16 @@
+import datetime
 import json
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.database import async_session, get_db
 from app.deps import get_current_user, get_enrollment_role, verify_project_access
+from app.models.enrollment import ProjectEnrollment
 from app.models.message import Message
 from app.models.module import Module
 from app.models.project import Project
@@ -211,6 +213,36 @@ async def chat_stream(
                                     )
                                     save_db.add(progress)
                         await save_db.commit()
+                        if role == "student":
+                            total = await save_db.scalar(
+                                select(func.count())
+                                .select_from(ModulePoint)
+                                .join(Module)
+                                .where(Module.project_id == project_id)
+                            )
+                            completed = await save_db.scalar(
+                                select(func.count())
+                                .select_from(UserPointProgress)
+                                .where(
+                                    UserPointProgress.user_id == user.id,
+                                    UserPointProgress.checked == True,
+                                )
+                                .join(ModulePoint, UserPointProgress.point_id == ModulePoint.id)
+                                .join(Module)
+                                .where(Module.project_id == project_id)
+                            )
+                            if total and completed is not None and completed >= total:
+                                result = await save_db.execute(
+                                    select(ProjectEnrollment).where(
+                                        ProjectEnrollment.project_id == project_id,
+                                        ProjectEnrollment.user_id == user.id,
+                                    )
+                                )
+                                enrollment = result.scalar_one_or_none()
+                                if enrollment and not enrollment.completed_at:
+                                    enrollment.completed_at = datetime.datetime.utcnow()
+                                    await save_db.commit()
+                                yield json.dumps({"type": "course_complete"})
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'text': str(e)})}\n\n"
         finally:
