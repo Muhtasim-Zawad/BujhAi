@@ -396,7 +396,7 @@ export default function ChatInterface({ projectId, role }) {
 								</div>
 							</div>
 							{message.role === "user" && (
-								<div className="flex size-9 shrink-0 items-center justify-center rounded-xl border-2 border-black bg-secondary shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+								<div className="flex size-9 shrink-0 items-center justify-center rounded-xl border-2 border-black bg-amber-500 text-primary-foreground shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
 									<User className="size-5" />
 								</div>
 							)}

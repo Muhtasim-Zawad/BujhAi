@@ -243,14 +243,20 @@ export default function Dashboard() {
 								</div>
 							</div>
 							{loading ? (
-								<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-									{[1, 2, 3].map((i) => (
-										<div key={i} className="flex flex-col gap-3 rounded-xl border-2 border-black bg-card p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-											<Skeleton className="aspect-video w-full rounded-lg bg-muted" />
-											<Skeleton className="h-5 w-2/3 rounded bg-muted" />
-											<Skeleton className="h-4 w-full rounded bg-muted" />
-										</div>
-									))}
+								<div className="flex flex-col gap-4">
+									<div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
+										<div className="size-2 rounded-full bg-muted-foreground/40" />
+										Loading projects...
+									</div>
+									<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+										{[1, 2, 3].map((i) => (
+											<div key={i} className="flex flex-col gap-3 rounded-xl border-2 border-black/20 bg-muted/30 p-4">
+												<Skeleton className="aspect-video w-full rounded-lg bg-muted-foreground/15" />
+												<Skeleton className="h-5 w-2/3 rounded bg-muted-foreground/15" />
+												<Skeleton className="h-4 w-full rounded bg-muted-foreground/15" />
+											</div>
+										))}
+									</div>
 								</div>
 							) : ownedProjects.length === 0 ? (
 								<div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
