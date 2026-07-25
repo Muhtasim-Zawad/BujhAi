@@ -1,10 +1,11 @@
 import json
 import re
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.models.enrollment import ProjectEnrollment
 from app.models.module import Module, ModulePoint
 from app.models.resource import Resource
 
@@ -79,6 +80,11 @@ async def generate_from_materials(
     if module_ids:
         await db.execute(delete(ModulePoint).where(ModulePoint.module_id.in_(module_ids)))
     await db.execute(delete(Module).where(Module.project_id == project_id))
+    await db.execute(
+        update(ProjectEnrollment)
+        .where(ProjectEnrollment.project_id == project_id)
+        .values(completed_at=None)
+    )
 
     modules_data = parsed.get("modules") or []
     resources_data = parsed.get("resources") or []

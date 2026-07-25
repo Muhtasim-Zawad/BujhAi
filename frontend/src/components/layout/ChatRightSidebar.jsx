@@ -82,9 +82,7 @@ export default function ChatRightSidebar({ projectId, role }) {
 	const globalProgress = totalPoints > 0 ? Math.round((checkedPoints / totalPoints) * 100) : 0;
 
 	useEffect(() => {
-		if (globalProgress === 100 && modules.length > 0) {
-			setCourseCompleted(true);
-		}
+		setCourseCompleted(globalProgress === 100 && modules.length > 0);
 	}, [globalProgress, modules]);
 
 	useEffect(() => {

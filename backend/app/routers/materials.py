@@ -1,12 +1,13 @@
 import os
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
 from app.deps import get_current_user, verify_project_access, verify_project_owner
+from app.models.enrollment import ProjectEnrollment
 from app.models.material import Material
 from app.models.module import Module, ModulePoint
 from app.models.project import Project
@@ -138,6 +139,11 @@ async def delete_material_route(
         ))
         await db.execute(delete(Module).where(Module.project_id == project_id))
         await db.execute(delete(Resource).where(Resource.project_id == project_id))
+        await db.execute(
+            update(ProjectEnrollment)
+            .where(ProjectEnrollment.project_id == project_id)
+            .values(completed_at=None)
+        )
         await db.commit()
 
 
