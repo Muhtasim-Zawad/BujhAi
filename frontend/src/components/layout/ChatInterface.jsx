@@ -7,7 +7,7 @@ import Canvas, {
 	clearCanvas,
 	loadCanvasScene,
 } from "@/components/layout/Canvas";
-import { streamChat, sendStt, fetchMessages, fetchCanvas, saveCanvas } from "@/utils/api";
+import { streamChat, sendStt, fetchMessages, fetchCanvas, saveCanvas, fetchMaterials } from "@/utils/api";
 import {
 	Send,
 	Paperclip,
@@ -30,6 +30,7 @@ export default function ChatInterface({ projectId, role }) {
 	const [messagesLoading, setMessagesLoading] = useState(true);
 	const [input, setInput] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
+	const [inputEnabled, setInputEnabled] = useState(false);
 	const [showCanvas, setShowCanvas] = useState(false);
 	const [isRecording, setIsRecording] = useState(false);
 	const [isTranscribing, setIsTranscribing] = useState(false);
@@ -42,7 +43,9 @@ export default function ChatInterface({ projectId, role }) {
 	const audioChunksRef = useRef([]);
 	const timerRef = useRef(null);
 	const currentPersonaRef = useRef(null);
+	const inputEnabledRef = useRef(false);
 	const [savedCanvasScene, setSavedCanvasScene] = useState(null);
+	const [hasMaterials, setHasMaterials] = useState(true);
 
 	useEffect(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -59,35 +62,22 @@ export default function ChatInterface({ projectId, role }) {
 		setMessagesLoading(true);
 		fetchMessages(projectId).then((msgs) => {
 			if (msgs && msgs.length > 0) {
-					const formatted = msgs.map((m) => {
-						let metadata = {};
-						try { metadata = JSON.parse(m.metadata_json || "{}"); } catch {}
-						return {
-							id: m.id,
-							role: m.role,
-							persona: m.role === "assistant" ? (metadata.persona || "student") : null,
-							content: m.content,
-							timestamp: m.created_at ? new Date(m.created_at) : new Date(),
-						};
-					});
+				const formatted = msgs.map((m) => {
+					let metadata = {};
+					try { metadata = JSON.parse(m.metadata_json || "{}"); } catch {}
+					return {
+						id: m.id,
+						role: m.role,
+						persona: m.role === "assistant" ? (metadata.persona || "student") : null,
+						content: m.content,
+						timestamp: m.created_at ? new Date(m.created_at) : new Date(),
+					};
+				});
 				setMessages(formatted);
-			} else {
-				setMessages([{
-					id: "welcome",
-					role: "assistant",
-					persona: "student",
-					content: "Hello! I'm BujhAI. How can I help you today?",
-					timestamp: new Date(),
-				}]);
+				setInputEnabled(true);
+				inputEnabledRef.current = true;
 			}
 		}).catch(() => {
-			setMessages([{
-				id: "welcome",
-				role: "assistant",
-				persona: "student",
-				content: "Hello! I'm BujhAI. How can I help you today?",
-				timestamp: new Date(),
-			}]);
 		}).finally(() => {
 			setMessagesLoading(false);
 		});
@@ -109,6 +99,13 @@ export default function ChatInterface({ projectId, role }) {
 			loadCanvasScene(excalidrawRef, savedCanvasScene);
 		}
 	}, [showCanvas, savedCanvasScene]);
+
+	useEffect(() => {
+		if (!projectId) return;
+		fetchMaterials(projectId).then((mats) => {
+			setHasMaterials(mats && mats.length > 0);
+		}).catch(() => setHasMaterials(false));
+	}, [projectId]);
 
 	const onEvaluatorStart = useCallback(() => {
 		const id = Date.now();
@@ -161,6 +158,10 @@ export default function ChatInterface({ projectId, role }) {
 	const onFinish = useCallback(() => {
 		setIsLoading(false);
 		currentPersonaRef.current = null;
+		if (!inputEnabledRef.current) {
+			inputEnabledRef.current = true;
+			setInputEnabled(true);
+		}
 	}, []);
 
 	const onError = useCallback((err) => {
@@ -337,7 +338,38 @@ export default function ChatInterface({ projectId, role }) {
 			{/* Messages */}
 			<div className="flex-1 overflow-y-auto px-4 py-6">
 			<div className="mx-auto flex max-w-3xl flex-col gap-4">
-				{messagesLoading ? (
+				{!messagesLoading && messages.length === 0 && !isLoading ? (
+					<div className="mx-auto flex w-full max-w-sm flex-col items-center gap-4 py-12 text-center">
+						<div className="flex size-12 items-center justify-center rounded-xl border-2 border-black bg-primary shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+							<Bot className="size-6 text-primary-foreground" />
+						</div>
+						<div className="flex flex-col items-center gap-1">
+							<h2 className="font-head text-lg tracking-tight">Welcome to BujhAI</h2>
+							<p className="text-sm text-muted-foreground">
+								I'll ask questions about the materials to help you learn.
+							</p>
+							{!hasMaterials && (
+								<p className="text-xs text-destructive">
+									No materials uploaded yet
+								</p>
+							)}
+						</div>
+						<Button
+							onClick={() => {
+								setInput("Let's start");
+								setTimeout(() => {
+									const form = document.querySelector("#chat-form");
+									if (form) form.requestSubmit();
+								}, 0);
+							}}
+							disabled={!hasMaterials}
+							size="default"
+							className="border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:translate-y-0.5 active:translate-x-0.5 active:translate-y-1 active:shadow-none disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							Start Learning Session
+						</Button>
+					</div>
+				) : messagesLoading ? (
 					<div className="flex gap-3">
 						<div className="flex size-9 shrink-0 items-center justify-center rounded-xl border-2 border-black bg-primary shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
 							<Bot className="size-5 text-primary-foreground" />
@@ -445,7 +477,7 @@ export default function ChatInterface({ projectId, role }) {
 
 			{/* Input area */}
 			<div className="border-t-2 border-black bg-card px-4 py-4">
-				<form onSubmit={handleSubmit} className="mx-auto flex max-w-3xl">
+				<form id="chat-form" onSubmit={handleSubmit} className="mx-auto flex max-w-3xl">
 					<div className="flex w-full flex-col rounded-xl border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all focus-within:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] focus-within:translate-x-[2px] focus-within:translate-y-[2px]">
 						<textarea
 							ref={textareaRef}
@@ -458,13 +490,18 @@ export default function ChatInterface({ projectId, role }) {
 							}}
 							onKeyDown={handleKeyDown}
 							placeholder="Type your message..."
-							className="min-h-[60px] max-h-[200px] w-full resize-none border-0 bg-transparent px-3 py-3 text-sm outline-none placeholder:text-muted-foreground"
+							disabled={!inputEnabled}
+							className="min-h-[60px] max-h-[200px] w-full resize-none border-0 bg-transparent px-3 py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
 						/>
 						<div className="flex items-center justify-between px-2 pb-1.5">
 							<div className="flex items-center gap-1">
 								<button
 									type="button"
-									className="flex cursor-pointer items-center justify-center rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+									className={cn(
+										"flex items-center justify-center rounded-lg p-1.5 text-muted-foreground transition-colors",
+										inputEnabled ? "cursor-pointer hover:bg-accent hover:text-foreground" : "cursor-not-allowed opacity-50",
+									)}
+									disabled={!inputEnabled}
 									title="Attach file"
 								>
 									<Paperclip className="size-4" />
@@ -480,7 +517,7 @@ export default function ChatInterface({ projectId, role }) {
 												: "text-muted-foreground hover:bg-accent hover:text-foreground",
 									)}
 									onClick={toggleRecording}
-									disabled={isTranscribing}
+									disabled={isTranscribing || !inputEnabled}
 									title={
 										isRecording
 											? "Stop recording"
@@ -504,7 +541,7 @@ export default function ChatInterface({ projectId, role }) {
 							<Button
 								type="submit"
 								size="icon-sm"
-								disabled={!input.trim() || isLoading}
+								disabled={!input.trim() || isLoading || !inputEnabled}
 								className="border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-1 active:shadow-none disabled:opacity-50"
 							>
 								<Send className="size-4" />
