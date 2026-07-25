@@ -35,6 +35,7 @@ def _sort_points(module: Module) -> None:
 async def list_modules(
     project_id: str,
     db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
     _: Project = Depends(verify_project_access),
 ):
     result = await db.execute(
@@ -43,6 +44,36 @@ async def list_modules(
     modules = result.scalars().all()
     for m in modules:
         _sort_points(m)
+
+    role = await get_enrollment_role(project_id, user.id, db)
+    if role == "student":
+        response = []
+        for m in modules:
+            points = []
+            for p in m.points:
+                progress_result = await db.execute(
+                    select(UserPointProgress.checked).where(
+                        UserPointProgress.user_id == user.id,
+                        UserPointProgress.point_id == p.id,
+                    )
+                )
+                student_checked = progress_result.scalar_one_or_none()
+                points.append({
+                    "id": p.id,
+                    "module_id": p.module_id,
+                    "text": p.text,
+                    "checked": student_checked if student_checked is not None else False,
+                    "sort_order": p.sort_order,
+                })
+            response.append({
+                "id": m.id,
+                "project_id": m.project_id,
+                "title": m.title,
+                "sort_order": m.sort_order,
+                "points": points,
+            })
+        return response
+
     return modules
 
 

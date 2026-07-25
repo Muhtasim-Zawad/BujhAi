@@ -143,8 +143,7 @@ async def chat_stream(
                     )
                 )
                 student_checked = progress_result.scalar_one_or_none()
-                if student_checked is not None:
-                    checked = student_checked
+                checked = student_checked if student_checked is not None else False
             points.append({
                 "id": p.id,
                 "text": p.text,
