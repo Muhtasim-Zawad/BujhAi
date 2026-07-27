@@ -11,6 +11,7 @@ class Settings(BaseSettings):
 
     groq_api_key: str = ""
     groq_model: str = "llama-3.3-70b-versatile"
+    groq_fallback_model: str = "llama-3.1-8b-instant"
 
     materials_dir: str = "materials"
     chroma_db_dir: str = "chroma_db"
