@@ -21,7 +21,7 @@ from app.models.user_point_progress import UserPointProgress
 from app.schemas.chat import ChatRequest
 from app.utils import nanoid
 from app.services.agent import stream_chat_agent
-from app.services.llm_fallback import FRIENDLY_ERROR, ModelExhaustedError
+from app.services.llm_fallback import FRIENDLY_ERROR, is_rate_limit_error
 from app.utils import nanoid
 
 router = APIRouter(prefix="/projects/{project_id}/chat", tags=["chat"], dependencies=[Depends(get_current_user)])
@@ -284,10 +284,16 @@ async def chat_stream(
                                     project.completed_at = datetime.datetime.utcnow()
                                     await save_db.commit()
                                 yield json.dumps({"type": "course_complete"})
-        except ModelExhaustedError:
-            yield f"data: {json.dumps({'type': 'error', 'text': FRIENDLY_ERROR, 'code': 'models_exhausted'})}\n\n"
         except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'text': str(e), 'code': 'unexpected_error'})}\n\n"
+            if is_rate_limit_error(e):
+                async with async_session() as delete_db:
+                    msg = await delete_db.get(Message, user_msg.id)
+                    if msg:
+                        await delete_db.delete(msg)
+                        await delete_db.commit()
+                yield f"data: {json.dumps({'type': 'error', 'text': FRIENDLY_ERROR, 'code': 'rate_limit', 'originalMessage': body.message})}\n\n"
+            else:
+                yield f"data: {json.dumps({'type': 'error', 'text': str(e), 'code': 'unexpected_error'})}\n\n"
         finally:
             async with async_session() as save_db:
                 uid = user.id if role == "student" else None

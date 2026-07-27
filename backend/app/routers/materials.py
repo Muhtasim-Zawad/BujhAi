@@ -1,3 +1,4 @@
+import logging
 import os
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
@@ -17,6 +18,8 @@ from app.schemas.material import MaterialResponse, UploadResponse
 from app.services.generator import generate_from_materials
 from app.services.rag import delete_material, ingest_text
 from app.utils import nanoid
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/projects/{project_id}/materials", tags=["materials"], dependencies=[Depends(get_current_user)])
 
@@ -82,10 +85,6 @@ async def upload_material(
     mime = file.content_type or "application/octet-stream"
 
     text = _extract_text(file_path, mime)
-    chunk_count = 0
-    if text.strip():
-        chunk_count = ingest_text(project_id, material_id, text, file.filename or "untitled")
-
     os.remove(file_path)
 
     material = Material(
@@ -95,13 +94,29 @@ async def upload_material(
         file_size=len(content),
         mime_type=mime,
         file_path=file_path,
-        chunk_count=chunk_count,
+        chunk_count=0,
     )
     db.add(material)
-    await db.commit()
-    await db.refresh(material)
 
-    generated = await generate_from_materials(project_id, db, source_material_id=material_id)
+    try:
+        chunk_count = 0
+        if text.strip():
+            chunk_count = ingest_text(project_id, material_id, text, file.filename or "untitled")
+        material.chunk_count = chunk_count
+        await db.commit()
+        await db.refresh(material)
+
+        generated = await generate_from_materials(project_id, db, source_material_id=material_id)
+    except Exception:
+        logger.exception("[materials] upload pipeline failed, cleaning up")
+        await db.rollback()
+        delete_material(project_id, material_id)
+        await db.execute(delete(Material).where(Material.id == material_id))
+        await db.commit()
+        raise HTTPException(
+            status_code=500,
+            detail="Material upload failed. The upload has been rolled back. Please try again.",
+        )
 
     resp = UploadResponse(material=MaterialResponse.model_validate(material))
     if generated:

@@ -200,6 +200,21 @@ export default function ChatInterface({ projectId, role }) {
 		setIsLoading(false);
 		currentPersonaRef.current = null;
 
+		if (err.code === "rate_limit") {
+			setInput(err.originalMessage || "");
+			setMessages((prev) => [
+				...prev,
+				{
+					id: Date.now(),
+					role: "assistant",
+					persona: "error",
+					content: err.message,
+					timestamp: new Date(),
+				},
+			]);
+			return;
+		}
+
 		if (err.code === "models_exhausted") {
 			setMessages((prev) => [
 				...prev,

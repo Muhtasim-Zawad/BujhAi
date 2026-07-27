@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { toast } from "sonner";
 import {
 	BookOpen,
 	Upload,
@@ -108,6 +109,10 @@ export default function Materials({ projectId, role }) {
 			}
 		} catch (err) {
 			console.error("Upload failed:", err);
+			toast.error("Material upload failed", {
+				description:
+					err.message || "The upload could not be completed. Please try again.",
+			});
 		}
 		setUploading(false);
 		e.target.value = "";

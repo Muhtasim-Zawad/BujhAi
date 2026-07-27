@@ -2,6 +2,61 @@ import { useCallback, useEffect, useRef } from "react";
 import { Excalidraw } from "@excalidraw/excalidraw";
 import "@excalidraw/excalidraw/index.css";
 
+// Compact canvas data to only essential fields for AI context
+export function compactSceneData(elements) {
+	try {
+		if (!Array.isArray(elements) || elements.length === 0) {
+			return null;
+		}
+
+		const compacted = elements.map((el) => {
+			const compact = {
+				id: el.id,
+				type: el.type, // rectangle, text, arrow, line, etc.
+			};
+
+			// Position and size - spatial context
+			if (el.x !== undefined) compact.x = Math.round(el.x);
+			if (el.y !== undefined) compact.y = Math.round(el.y);
+			if (el.width) compact.width = Math.round(el.width);
+			if (el.height) compact.height = Math.round(el.height);
+
+			// Text content - most important for AI
+			if (el.text) compact.text = el.text;
+
+			// Visual properties - help AI understand intent
+			if (el.strokeColor) compact.color = el.strokeColor;
+			if (el.type === "arrow") {
+				// Connection info for arrows
+				compact.points = el.points;
+				if (el.startBinding) compact.from = el.startBinding.elementId;
+				if (el.endBinding) compact.to = el.endBinding.elementId;
+			}
+
+			// Container reference (for text inside shapes)
+			if (el.containerId) compact.container = el.containerId;
+
+			return compact;
+		});
+
+		const result = JSON.stringify(compacted);
+		console.log(
+			"[Canvas] compactSceneData: created",
+			compacted.length,
+			"elements, size:",
+			result.length,
+			"bytes",
+		);
+		return result;
+	} catch (err) {
+		console.error(
+			"[Canvas] compactSceneData: error compacting scene data:",
+			err,
+		);
+		return null;
+	}
+}
+
 export function getCanvasScene(excalidrawRef) {
 	const ref = excalidrawRef?.current;
 
@@ -135,7 +190,9 @@ export default function Canvas({
 
 			// Store the latest scene data in ref
 			currentDataRef.current = { elements, appState, files };
-			const sceneData = JSON.stringify(elements);
+
+			// Use compacted data for AI context (only essential fields)
+			const sceneData = compactSceneData(elements);
 
 			// Sync to parent ref so getCanvasScene can access it
 			if (excalidrawRef) {
@@ -143,9 +200,11 @@ export default function Canvas({
 					getSceneElements: () => elements,
 					getAppState: () => appState,
 					getFiles: () => files,
-					sceneData: sceneData,
+					sceneData: sceneData, // Now contains compacted JSON
 				};
-				console.log("[Canvas] Updated excalidrawRef.current with scene data");
+				console.log(
+					"[Canvas] Updated excalidrawRef.current with compacted scene data",
+				);
 			}
 
 			// Signal canvas is ready

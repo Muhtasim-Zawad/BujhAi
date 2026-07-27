@@ -57,6 +57,10 @@ export default function Dashboard() {
 	const [joinError, setJoinError] = useState("");
 	const [joining, setJoining] = useState(false);
 	const [copiedCode, setCopiedCode] = useState(null);
+	const [deleting, setDeleting] = useState(false);
+	const [leaving, setLeaving] = useState(false);
+	const [deleteError, setDeleteError] = useState("");
+	const [leaveError, setLeaveError] = useState("");
 
 	useEffect(() => {
 		(async () => {
@@ -91,13 +95,16 @@ export default function Dashboard() {
 	}
 
 	async function handleDelete(project) {
+		setDeleting(true);
+		setDeleteError("");
 		try {
 			await deleteProject(project.id);
 			setProjects((prev) => prev.filter((p) => p.id !== project.id));
+			setDeletingProject(null);
 		} catch (err) {
-			console.error("Delete failed:", err);
+			setDeleteError(err.message || "Failed to delete project");
 		}
-		setDeletingProject(null);
+		setDeleting(false);
 	}
 
 	async function handleJoin() {
@@ -121,13 +128,16 @@ export default function Dashboard() {
 	}
 
 	async function handleLeave(project) {
+		setLeaving(true);
+		setLeaveError("");
 		try {
 			await leaveProject(project.id);
 			setProjects((prev) => prev.filter((p) => p.id !== project.id));
+			setLeavingProject(null);
 		} catch (err) {
-			console.error("Leave failed:", err);
+			setLeaveError(err.message || "Failed to leave project");
 		}
-		setLeavingProject(null);
+		setLeaving(false);
 	}
 
 	async function handleRegenerateCode(projectId) {
@@ -375,7 +385,9 @@ export default function Dashboard() {
 				{/* Delete project confirmation dialog */}
 				<Dialog
 					open={!!deletingProject}
-					onOpenChange={(open) => !open && setDeletingProject(null)}
+					onOpenChange={(open) => {
+						if (!open) { setDeletingProject(null); setDeleteError(""); setDeleting(false); }
+					}}
 				>
 					{deletingProject && (
 						<DialogContent className="bg-card">
@@ -389,9 +401,14 @@ export default function Dashboard() {
 									? This action cannot be undone.
 								</DialogDescription>
 							</DialogHeader>
+							{deleteError && (
+								<p className="text-sm text-destructive px-6">{deleteError}</p>
+							)}
 							<DialogFooter>
 								<DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-								<DialogClose render={<Button variant="destructive" onClick={() => handleDelete(deletingProject)} />}>Delete</DialogClose>
+								<Button variant="destructive" onClick={() => handleDelete(deletingProject)} disabled={deleting}>
+									{deleting ? "Deleting..." : "Delete"}
+								</Button>
 							</DialogFooter>
 						</DialogContent>
 					)}
@@ -400,7 +417,9 @@ export default function Dashboard() {
 				{/* Leave project confirmation dialog */}
 				<Dialog
 					open={!!leavingProject}
-					onOpenChange={(open) => !open && setLeavingProject(null)}
+					onOpenChange={(open) => {
+						if (!open) { setLeavingProject(null); setLeaveError(""); setLeaving(false); }
+					}}
 				>
 					{leavingProject && (
 						<DialogContent className="bg-card">
@@ -414,9 +433,14 @@ export default function Dashboard() {
 									?
 								</DialogDescription>
 							</DialogHeader>
+							{leaveError && (
+								<p className="text-sm text-destructive px-6">{leaveError}</p>
+							)}
 							<DialogFooter>
 								<DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-								<DialogClose render={<Button variant="destructive" onClick={() => handleLeave(leavingProject)} />}>Leave</DialogClose>
+								<Button variant="destructive" onClick={() => handleLeave(leavingProject)} disabled={leaving}>
+									{leaving ? "Leaving..." : "Leave"}
+								</Button>
 							</DialogFooter>
 						</DialogContent>
 					)}

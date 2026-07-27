@@ -3,6 +3,7 @@ import "@fontsource/archivo-black/400.css";
 import "@fontsource/space-grotesk/400.css";
 import "@fontsource/space-grotesk/500.css";
 import { SessionProvider } from "./hooks/useSession";
+import { Toaster } from "./components/ui/sonner";
 import LandingPage from "./components/sections/LandingPage";
 import AuthPage from "./components/sections/AuthPage";
 import Dashboard from "./components/sections/Dashboard";
@@ -14,6 +15,7 @@ function App() {
 	return (
 		<SessionProvider>
 			<BrowserRouter>
+				<Toaster />
 				<Routes>
 					<Route
 						path="/"

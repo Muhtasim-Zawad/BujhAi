@@ -1,3 +1,5 @@
+import logging
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -5,11 +7,15 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import init_db
 from app.routers import canvas, chat, enrollment, materials, modules, projects, resources, stats, stt, users
+from app.services.rag import cleanup_orphaned_collections
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    cleanup_orphaned_collections()
     yield
 
 

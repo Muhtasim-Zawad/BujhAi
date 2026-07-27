@@ -1,8 +1,12 @@
+import logging
 import os
+import shutil
 
 import chromadb
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 os.makedirs(settings.chroma_db_dir, exist_ok=True)
 client = chromadb.PersistentClient(path=settings.chroma_db_dir)
@@ -95,3 +99,34 @@ def delete_collection(project_id: str) -> None:
         client.delete_collection(_collection_name(project_id))
     except (ValueError, chromadb.errors.NotFoundError):
         pass
+    cleanup_orphaned_collections()
+
+
+def cleanup_orphaned_collections() -> None:
+    import sqlite3
+
+    db_path = os.path.join(settings.chroma_db_dir, "chroma.sqlite3")
+    if not os.path.exists(db_path):
+        return
+
+    conn = sqlite3.connect(db_path)
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM collections")
+        active_ids = {row[0] for row in cursor.fetchall()}
+        cursor.execute("SELECT id FROM segments")
+        active_ids.update(row[0] for row in cursor.fetchall())
+    finally:
+        conn.close()
+
+    removed = 0
+    for entry in os.listdir(settings.chroma_db_dir):
+        path = os.path.join(settings.chroma_db_dir, entry)
+        if entry == "chroma.sqlite3" or not os.path.isdir(path):
+            continue
+        if entry not in active_ids:
+            shutil.rmtree(path, ignore_errors=True)
+            removed += 1
+
+    if removed:
+        logger.info("cleaned %d orphaned ChromaDB data director%s", removed, "y" if removed == 1 else "ies")

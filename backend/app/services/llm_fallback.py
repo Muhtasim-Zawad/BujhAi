@@ -9,10 +9,6 @@ logger = logging.getLogger(__name__)
 FRIENDLY_ERROR = "The AI tutor is temporarily at capacity. Please try again in a little while."
 
 
-class ModelExhaustedError(Exception):
-    pass
-
-
 def is_rate_limit_error(e: Exception) -> bool:
     if hasattr(e, "status_code") and e.status_code == 429:
         return True

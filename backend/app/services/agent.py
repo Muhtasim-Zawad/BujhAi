@@ -10,7 +10,7 @@ from langgraph.graph import END, START, StateGraph
 from typing_extensions import TypedDict
 
 from app.config import settings
-from app.services.llm_fallback import create_chat, is_rate_limit_error
+from app.services.llm_fallback import create_chat
 from app.services.rag import search as rag_search
 
 logger = logging.getLogger(__name__)
@@ -134,23 +134,12 @@ async def evaluate_node(state: AgentState) -> dict:
 Student's message to evaluate:
 {state['user_input']}"""
 
-    models_to_try = [settings.groq_model, settings.groq_fallback_model]
-    response = None
-
-    for attempt_index, model in enumerate(models_to_try):
-        try:
-            chat = create_chat(model=model, api_key=settings.groq_api_key)
-            json_llm = chat.bind(response_format={"type": "json_object"})
-            response = await json_llm.ainvoke([
-                SystemMessage(content=EVALUATOR_SYSTEM),
-                HumanMessage(content=prompt),
-            ])
-            break
-        except Exception as e:
-            if is_rate_limit_error(e) and attempt_index < len(models_to_try) - 1:
-                logger.warning("[agent] evaluate_node: rate limited on %s, falling back to %s", model, models_to_try[attempt_index + 1])
-                continue
-            raise
+    chat = create_chat(model=settings.groq_model, api_key=settings.groq_api_key)
+    json_llm = chat.bind(response_format={"type": "json_object"})
+    response = await json_llm.ainvoke([
+        SystemMessage(content=EVALUATOR_SYSTEM),
+        HumanMessage(content=prompt),
+    ])
 
     raw = response.content or "{}"
     try:
@@ -188,22 +177,10 @@ async def student_node(state: AgentState) -> dict:
                 f"User message:\n{state['user_input']}"
     ))
 
-    models_to_try = [settings.groq_model, settings.groq_fallback_model]
+    chat = create_chat(model=settings.groq_model, api_key=settings.groq_api_key)
     content = ""
-
-    for attempt_index, model in enumerate(models_to_try):
-        try:
-            chat = create_chat(model=model, api_key=settings.groq_api_key)
-            async for chunk in chat.astream(messages):
-                content += chunk.content if hasattr(chunk, "content") else ""
-            break
-        except Exception as e:
-            if is_rate_limit_error(e) and attempt_index < len(models_to_try) - 1:
-                logger.warning("[agent] student_node: rate limited on %s, falling back to %s", model, models_to_try[attempt_index + 1])
-                content = ""
-                continue
-            raise
-
+    async for chunk in chat.astream(messages):
+        content += chunk.content if hasattr(chunk, "content") else ""
     return {"student_response": content}
 
 

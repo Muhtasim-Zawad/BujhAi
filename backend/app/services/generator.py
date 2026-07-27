@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 
 from sqlalchemy import delete, select, update
@@ -12,6 +13,8 @@ from app.models.resource import Resource
 
 from app.services.rag import search as rag_search
 from app.utils import nanoid
+
+logger = logging.getLogger(__name__)
 
 _GENERATION_PROMPT = """You are a curriculum designer. Based on the following learning material, suggest modules (topics to cover) and learning resources.
 
@@ -61,6 +64,7 @@ async def generate_from_materials(
     from groq import AsyncGroq
 
     client = AsyncGroq(api_key=settings.groq_api_key)
+
     response = await client.chat.completions.create(
         model=settings.groq_model,
         messages=[
@@ -99,8 +103,8 @@ async def generate_from_materials(
     except Exception:
         pass
 
-    modules_data = parsed.get("modules") or []
-    resources_data = parsed.get("resources") or []
+    modules_data = _extract_items(parsed, "modules")
+    resources_data = _extract_items(parsed, "resources")
 
     # --- Create modules ---
     created_modules = []
@@ -175,6 +179,33 @@ async def generate_from_materials(
         "modules": created_modules,
         "resources": created_resources,
     }
+
+
+def _extract_items(data: dict, key: str) -> list:
+    if key in data:
+        items = data[key]
+        if isinstance(items, dict):
+            return [items]
+        if isinstance(items, list):
+            return items
+
+    singular = key.rstrip("s")
+    if singular != key and singular in data:
+        items = data[singular]
+        if isinstance(items, dict):
+            return [items]
+        if isinstance(items, list):
+            return items
+
+    base = key.lower().rstrip("s")
+    collected = []
+    for k, v in data.items():
+        if base in k.lower():
+            if isinstance(v, list):
+                collected.extend(v)
+            elif isinstance(v, dict):
+                collected.append(v)
+    return collected
 
 
 def _parse_json(raw: str) -> dict | None:
