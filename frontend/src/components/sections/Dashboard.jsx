@@ -2,18 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../layout/Navbar";
 import { ProjectCard } from "../layout/ProjectCard";
-import {
-	Accordion,
-	AccordionItem,
-	AccordionTrigger,
-	AccordionContent,
-} from "@/components/ui/accordion";
-import {
-	Card,
-	CardHeader,
-	CardTitle,
-	CardContent,
-} from "@/components/ui/card";
+import DashboardResources from "../layout/DashboardResources";
+import DashboardStats from "../layout/DashboardStats";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,7 +16,7 @@ import {
 	DialogClose,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { Plus, Trash2, FolderOpen, BookOpen, BarChart3, LogOut, Copy, Check, Video, Globe, Map, ExternalLink } from "lucide-react";
+import { Plus, Trash2, FolderOpen, LogOut, Copy, Check } from "lucide-react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -34,8 +24,6 @@ import {
 	fetchCurrentUser,
 	createProject,
 	deleteProject,
-	fetchResources,
-	fetchStats,
 	joinProjectByCode,
 	leaveProject,
 	regenerateJoinCode,
@@ -65,11 +53,6 @@ export default function Dashboard() {
 	const [newProject, setNewProject] = useState({ title: "", description: "" });
 	const [deletingProject, setDeletingProject] = useState(null);
 	const [leavingProject, setLeavingProject] = useState(null);
-	const [resourcesMap, setResourcesMap] = useState({});
-	const [statsMap, setStatsMap] = useState({});
-	const [loadingResources, setLoadingResources] = useState({});
-	const [loadingStats, setLoadingStats] = useState({});
-
 	const [joinCode, setJoinCode] = useState("");
 	const [joinError, setJoinError] = useState("");
 	const [joining, setJoining] = useState(false);
@@ -91,30 +74,6 @@ export default function Dashboard() {
 
 	const ownedProjects = projects.filter((p) => p.user_id === userId);
 	const enrolledProjects = projects.filter((p) => p.user_id !== userId);
-
-	async function loadResources(projectId) {
-		if (resourcesMap[projectId] || loadingResources[projectId]) return;
-		setLoadingResources((p) => ({ ...p, [projectId]: true }));
-		try {
-			const data = await fetchResources(projectId);
-			setResourcesMap((p) => ({ ...p, [projectId]: data }));
-		} catch {
-			setResourcesMap((p) => ({ ...p, [projectId]: [] }));
-		}
-		setLoadingResources((p) => ({ ...p, [projectId]: false }));
-	}
-
-	async function loadStats(projectId) {
-		if (statsMap[projectId] || loadingStats[projectId]) return;
-		setLoadingStats((p) => ({ ...p, [projectId]: true }));
-		try {
-			const data = await fetchStats(projectId);
-			setStatsMap((p) => ({ ...p, [projectId]: data }));
-		} catch {
-			setStatsMap((p) => ({ ...p, [projectId]: null }));
-		}
-		setLoadingStats((p) => ({ ...p, [projectId]: false }));
-	}
 
 	async function handleCreate() {
 		if (!newProject.title.trim()) return;
@@ -335,193 +294,9 @@ export default function Dashboard() {
 					</div>
 				)}
 
-				{/* Resources */}
-				{section === "resources" && (
-					<div className="flex flex-col gap-4">
-						{projects.length === 0 ? (
-							<div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-								<BookOpen className="size-12 text-muted-foreground" />
-								<p className="text-lg font-medium text-muted-foreground">
-									No resources available
-								</p>
-								<p className="text-sm text-muted-foreground">
-									Create a project and add resources to see them here.
-								</p>
-							</div>
-						) : (
-							projects.map((project) => (
-								<Accordion
-									key={project.id}
-									onValueChange={(val) => {
-										if (val) loadResources(project.id);
-									}}
-								>
-									<AccordionItem>
-										<AccordionTrigger>
-											{project.title}
-										</AccordionTrigger>
-										<AccordionContent>
-											{loadingResources[project.id] ? (
-												<div className="flex items-center justify-center py-4">
-													<Skeleton className="h-4 w-32 rounded bg-muted" />
-												</div>
-											) : resourcesMap[project.id]?.length > 0 ? (
-												<Accordion>
-													{resourcesMap[project.id].map((res) => {
-														const iconMap = {
-															youtube_video: Video,
-															online_tutorial: Globe,
-															roadmap: Map,
-														};
-														const Icon = iconMap[res.resource_type] || ExternalLink;
-														const hasUrl = res.url && res.url.startsWith("http");
+				{section === "resources" && <DashboardResources projects={projects} />}
 
-														return (
-															<AccordionItem key={res.id}>
-																<AccordionTrigger className="group">
-																	<div className="flex items-center gap-2">
-																		<Icon className="size-4 shrink-0 text-muted-foreground" />
-																		<span>{res.title}</span>
-																	</div>
-																</AccordionTrigger>
-																<AccordionContent>
-																	{res.resource_type === "roadmap" ? (
-																		(() => {
-																			let steps = null;
-																			try { steps = JSON.parse(res.content); } catch {}
-																			if (steps && Array.isArray(steps) && steps.length > 0) {
-																				return (
-																					<div className="flex items-start gap-1 overflow-x-auto py-2">
-																						{steps.map((step, i) => (
-																							<div key={i} className="flex items-center gap-1 shrink-0">
-																								<div className="rounded-md border-2 border-black bg-card px-3 py-2 text-xs font-medium shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] whitespace-nowrap">
-																									{i + 1}. {step}
-																								</div>
-																								{i < steps.length - 1 && (
-																									<span className="text-muted-foreground text-lg">→</span>
-																								)}
-																							</div>
-																						))}
-																					</div>
-																				);
-																			}
-																			return <p className="text-sm text-muted-foreground">{res.content}</p>;
-																		})()
-																	) : (
-																		<div className="flex items-center justify-between rounded-lg border-2 border-black bg-card p-4 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-																			<div className="flex flex-col gap-0.5">
-																				<span className="text-sm font-medium">{res.title}</span>
-																				<span className="text-xs text-muted-foreground">{res.content}</span>
-																			</div>
-																			{hasUrl ? (
-																				<a
-																					href={res.url}
-																					target="_blank"
-																					rel="noopener noreferrer"
-																					className="inline-flex items-center gap-1.5 rounded-md border-2 border-black bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-y-0.5 active:translate-y-1 active:shadow-none"
-																				>
-																					<ExternalLink className="size-3.5" />
-																					Open
-																				</a>
-																			) : (
-																				<span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-																					<Icon className="size-3" />
-																					{res.resource_type.replace(/_/g, " ")}
-																				</span>
-																			)}
-																		</div>
-																	)}
-																</AccordionContent>
-															</AccordionItem>
-														);
-													})}
-												</Accordion>
-											) : (
-												<p className="py-2 text-center text-sm text-muted-foreground">
-													No resources yet. Upload materials first.
-												</p>
-											)}
-										</AccordionContent>
-									</AccordionItem>
-								</Accordion>
-							))
-						)}
-					</div>
-				)}
-
-				{/* Stats */}
-				{section === "stats" && (
-					<div className="flex flex-col gap-4">
-						{projects.length === 0 ? (
-							<div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-								<BarChart3 className="size-12 text-muted-foreground" />
-								<p className="text-lg font-medium text-muted-foreground">
-									No stats available
-								</p>
-								<p className="text-sm text-muted-foreground">
-									Start working on a project to track your progress.
-								</p>
-							</div>
-						) : (
-							projects.map((project) => (
-								<Accordion
-									key={project.id}
-									onValueChange={(val) => {
-										if (val) loadStats(project.id);
-									}}
-								>
-									<AccordionItem>
-										<AccordionTrigger>
-											{project.title}
-										</AccordionTrigger>
-										<AccordionContent>
-											{loadingStats[project.id] ? (
-												<div className="flex items-center justify-center py-4">
-													<Skeleton className="h-4 w-32 rounded bg-muted" />
-												</div>
-											) : statsMap[project.id] ? (
-												<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-													<Card>
-														<CardHeader>
-															<CardTitle>Materials</CardTitle>
-															<CardContent className="pt-0 px-0">
-																<p className="text-2xl font-bold">{statsMap[project.id].total_materials}</p>
-																<p className="text-xs text-muted-foreground">{statsMap[project.id].total_chunks} chunks indexed</p>
-															</CardContent>
-														</CardHeader>
-													</Card>
-												<Card>
-													<CardHeader>
-														<CardTitle>Enrolled</CardTitle>
-														<CardContent className="pt-0 px-0">
-															<p className="text-2xl font-bold">{statsMap[project.id].total_enrolled}</p>
-														</CardContent>
-													</CardHeader>
-												</Card>
-													<Card>
-														<CardHeader>
-															<CardTitle>Modules</CardTitle>
-															<CardContent className="pt-0 px-0">
-																<p className="text-2xl font-bold">{statsMap[project.id].total_modules}</p>
-																<p className="text-xs text-muted-foreground">
-																	{statsMap[project.id].module_points_completed}/{statsMap[project.id].module_points_total} points
-																</p>
-															</CardContent>
-														</CardHeader>
-													</Card>
-													</div>
-											) : (
-												<p className="py-2 text-center text-sm text-muted-foreground">
-													No stats yet.
-												</p>
-											)}
-										</AccordionContent>
-									</AccordionItem>
-								</Accordion>
-							))
-						)}
-					</div>
-				)}
+				{section === "stats" && <DashboardStats projects={projects} />}
 
 				{/* Create project dialog */}
 				<Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
