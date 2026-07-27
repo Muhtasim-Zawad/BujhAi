@@ -26,7 +26,7 @@ import {
 	DialogClose,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { Plus, Trash2, FolderOpen, BookOpen, BarChart3, LogOut, Copy, Check } from "lucide-react";
+import { Plus, Trash2, FolderOpen, BookOpen, BarChart3, LogOut, Copy, Check, Video, Globe, Map, ExternalLink } from "lucide-react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -366,19 +366,76 @@ export default function Dashboard() {
 													<Skeleton className="h-4 w-32 rounded bg-muted" />
 												</div>
 											) : resourcesMap[project.id]?.length > 0 ? (
-												<div className="flex flex-col gap-3">
-													{resourcesMap[project.id].map((res) => (
-														<div key={res.id} className="rounded-lg border border-black/20 bg-muted/30 p-3">
-															<p className="text-sm font-medium">{res.title}</p>
-															<p className="mt-1 text-xs text-muted-foreground">{res.content}</p>
-															{res.resource_type && (
-																<span className="mt-1 inline-block rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-																	{res.resource_type.replace(/_/g, " ")}
-																</span>
-															)}
-														</div>
-													))}
-												</div>
+												<Accordion>
+													{resourcesMap[project.id].map((res) => {
+														const iconMap = {
+															youtube_video: Video,
+															online_tutorial: Globe,
+															roadmap: Map,
+														};
+														const Icon = iconMap[res.resource_type] || ExternalLink;
+														const hasUrl = res.url && res.url.startsWith("http");
+
+														return (
+															<AccordionItem key={res.id}>
+																<AccordionTrigger className="group">
+																	<div className="flex items-center gap-2">
+																		<Icon className="size-4 shrink-0 text-muted-foreground" />
+																		<span>{res.title}</span>
+																	</div>
+																</AccordionTrigger>
+																<AccordionContent>
+																	{res.resource_type === "roadmap" ? (
+																		(() => {
+																			let steps = null;
+																			try { steps = JSON.parse(res.content); } catch {}
+																			if (steps && Array.isArray(steps) && steps.length > 0) {
+																				return (
+																					<div className="flex items-start gap-1 overflow-x-auto py-2">
+																						{steps.map((step, i) => (
+																							<div key={i} className="flex items-center gap-1 shrink-0">
+																								<div className="rounded-md border-2 border-black bg-card px-3 py-2 text-xs font-medium shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] whitespace-nowrap">
+																									{i + 1}. {step}
+																								</div>
+																								{i < steps.length - 1 && (
+																									<span className="text-muted-foreground text-lg">→</span>
+																								)}
+																							</div>
+																						))}
+																					</div>
+																				);
+																			}
+																			return <p className="text-sm text-muted-foreground">{res.content}</p>;
+																		})()
+																	) : (
+																		<div className="flex items-center justify-between rounded-lg border-2 border-black bg-card p-4 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+																			<div className="flex flex-col gap-0.5">
+																				<span className="text-sm font-medium">{res.title}</span>
+																				<span className="text-xs text-muted-foreground">{res.content}</span>
+																			</div>
+																			{hasUrl ? (
+																				<a
+																					href={res.url}
+																					target="_blank"
+																					rel="noopener noreferrer"
+																					className="inline-flex items-center gap-1.5 rounded-md border-2 border-black bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-y-0.5 active:translate-y-1 active:shadow-none"
+																				>
+																					<ExternalLink className="size-3.5" />
+																					Open
+																				</a>
+																			) : (
+																				<span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+																					<Icon className="size-3" />
+																					{res.resource_type.replace(/_/g, " ")}
+																				</span>
+																			)}
+																		</div>
+																	)}
+																</AccordionContent>
+															</AccordionItem>
+														);
+													})}
+												</Accordion>
 											) : (
 												<p className="py-2 text-center text-sm text-muted-foreground">
 													No resources yet. Upload materials first.

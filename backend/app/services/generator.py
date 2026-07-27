@@ -18,12 +18,11 @@ _GENERATION_PROMPT = """You are a curriculum designer. Based on the following le
 Rules:
 - Modules represent logical sections of the material. Each module should have 2-4 points that serve as both checklist items and evaluation criteria describing what the learner should know.
 - Points should be concrete and measurable, suitable for assessing understanding.
-- Resources should be practical learning aids the student can use. Generate 2-4 resources.
+- Generate exactly 5 resources in this order: 2 youtube_video, 2 online_tutorial, 1 roadmap.
 - resource_type must be one of: "youtube_video", "online_tutorial", "roadmap"
-  - youtube_video: provide an actual YouTube URL the student can open
-  - online_tutorial: provide an actual URL to the website/tutorial
-  - roadmap: a suggested study order for which topic to learn after which
-- For content in resources: if it's a youtube_video or online_tutorial, provide the full URL. If it's a roadmap, describe the suggested learning path.
+  - youtube_video: provide an actual YouTube URL the student can open. content should be the source name (e.g. "YouTube - freeCodeCamp").
+  - online_tutorial: provide an actual URL to the website/tutorial. content should be the source name (e.g. "MDN Web Docs").
+  - roadmap: a chronological list of steps describing what to learn and in which order. content must be a JSON array of step strings (e.g. '["Start with fundamentals", "Learn core concepts", "Practice with projects"]'). url should be empty.
 - Use the actual content of the material — don't invent topics not covered.
 - Output ONLY valid JSON, no markdown or extra text.
 
@@ -33,9 +32,11 @@ Respond in this exact JSON format:
     {"title": "Module name", "points": [{"text": "Checklist item / evaluation criterion"}]}
   ],
   "resources": [
-    {"title": "Resource title", "content": "URL or description", "url": "https://...", "resource_type": "youtube_video"},
-    {"title": "Resource title", "content": "URL or description", "url": "https://...", "resource_type": "online_tutorial"},
-    {"title": "Study Roadmap", "content": "Study this first, then this, then this...", "resource_type": "roadmap"}
+    {"title": "Resource title", "content": "source name", "url": "https://...", "resource_type": "youtube_video"},
+    {"title": "Resource title", "content": "source name", "url": "https://...", "resource_type": "online_tutorial"},
+    {"title": "Resource title", "content": "source name", "url": "https://...", "resource_type": "youtube_video"},
+    {"title": "Resource title", "content": "source name", "url": "https://...", "resource_type": "online_tutorial"},
+    {"title": "Study Roadmap", "content": "[\"step one\", \"step two\", \"step three\"]", "url": "", "resource_type": "roadmap"}
   ]
 }"""
 

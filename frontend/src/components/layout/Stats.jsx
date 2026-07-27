@@ -221,24 +221,51 @@ export default function Stats({ projectId, role }) {
 									</div>
 								</AccordionTrigger>
 								<AccordionContent>
-									{hasUrl ? (
-										<a
-											href={res.url}
-											target="_blank"
-											rel="noopener noreferrer"
-											className="inline-flex items-center gap-2 rounded-lg border-2 border-black bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-y-0.5 active:translate-y-1 active:shadow-none"
-										>
-											<ExternalLink className="size-4" />
-											Open {res.resource_type === "youtube_video" ? "Video" : "Resource"}
-										</a>
+									{res.resource_type === "roadmap" ? (
+										(() => {
+											let steps = null;
+											try { steps = JSON.parse(res.content); } catch {}
+											if (steps && Array.isArray(steps) && steps.length > 0) {
+												return (
+													<div className="flex items-start gap-1 overflow-x-auto py-2">
+														{steps.map((step, i) => (
+															<div key={i} className="flex items-center gap-1 shrink-0">
+																<div className="rounded-md border-2 border-black bg-card px-3 py-2 text-xs font-medium shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] whitespace-nowrap">
+																	{i + 1}. {step}
+																</div>
+																{i < steps.length - 1 && (
+																	<span className="text-muted-foreground text-lg">→</span>
+																)}
+															</div>
+														))}
+													</div>
+												);
+											}
+											return <p className="text-sm text-muted-foreground">{res.content}</p>;
+										})()
 									) : (
-										<p className="text-sm text-muted-foreground">{res.content}</p>
-									)}
-									{res.resource_type && (
-										<span className="mt-2 inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-											<Icon className="size-3" />
-											{res.resource_type.replace(/_/g, " ")}
-										</span>
+										<div className="flex items-center justify-between rounded-lg border-2 border-black bg-card p-4 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+											<div className="flex flex-col gap-0.5">
+												<span className="text-sm font-medium">{res.title}</span>
+												<span className="text-xs text-muted-foreground">{res.content}</span>
+											</div>
+											{hasUrl ? (
+												<a
+													href={res.url}
+													target="_blank"
+													rel="noopener noreferrer"
+													className="inline-flex items-center gap-1.5 rounded-md border-2 border-black bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-y-0.5 active:translate-y-1 active:shadow-none"
+												>
+													<ExternalLink className="size-3.5" />
+													Open
+												</a>
+											) : (
+												<span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+													<Icon className="size-3" />
+													{res.resource_type.replace(/_/g, " ")}
+												</span>
+											)}
+										</div>
 									)}
 								</AccordionContent>
 							</AccordionItem>
