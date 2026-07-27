@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 from app.config import settings
 from app.database import async_session, get_db
 from app.deps import get_current_user, get_enrollment_role, verify_project_access
+from app.models.canvas_scene import CanvasScene
 from app.models.enrollment import ProjectEnrollment
 from app.models.message import Message
 from app.models.module import Module
@@ -18,9 +19,9 @@ from app.models.module import ModulePoint
 from app.models.user import User
 from app.models.user_point_progress import UserPointProgress
 from app.schemas.chat import ChatRequest
+from app.utils import nanoid
 from app.services.agent import stream_chat_agent
 from app.services.llm_fallback import FRIENDLY_ERROR, ModelExhaustedError
-from app.services.excalidraw import parse_scene
 from app.utils import nanoid
 
 router = APIRouter(prefix="/projects/{project_id}/chat", tags=["chat"], dependencies=[Depends(get_current_user)])
@@ -88,11 +89,7 @@ async def chat_stream(
     metadata = {}
     if body.canvas_data:
         metadata["canvas_data"] = body.canvas_data
-        try:
-            elements = json.loads(body.canvas_data)
-            canvas_text = parse_scene(elements)
-        except (json.JSONDecodeError, Exception):
-            canvas_text = body.canvas_data
+        canvas_text = body.canvas_data
 
     user_msg = Message(
         project_id=project_id,
@@ -104,6 +101,29 @@ async def chat_stream(
     db.add(user_msg)
     await db.commit()
     await db.refresh(user_msg)
+
+    if body.canvas_data:
+        user_id_for_scene = None if role == "owner" else user.id
+        result = await db.execute(
+            select(CanvasScene)
+            .where(
+                CanvasScene.project_id == project_id,
+                CanvasScene.user_id == user_id_for_scene,
+            )
+            .order_by(CanvasScene.updated_at.desc())
+            .limit(1)
+        )
+        existing_scene = result.scalar_one_or_none()
+        if existing_scene:
+            existing_scene.scene_data = body.canvas_data
+        else:
+            db.add(CanvasScene(
+                id=nanoid(),
+                project_id=project_id,
+                user_id=user_id_for_scene,
+                scene_data=body.canvas_data,
+            ))
+        await db.commit()
 
     if role == "owner":
         result = await db.execute(

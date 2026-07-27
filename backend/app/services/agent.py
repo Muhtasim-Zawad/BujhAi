@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
 
 EVALUATOR_SYSTEM = """You are an evaluator. Your role is to assess the student's understanding against the module checklist points and provide feedback. Do NOT proactively teach or lecture — respond specifically to what the student said and evaluate it. Keep responses encouraging and specific.
 
+If a canvas drawing is included below, examine it as part of the student's submission — it may contain diagrams, notes, or visual explanations relevant to their answer.
+
 Respond with valid JSON. The JSON must contain these fields:
 - evaluation_text: your assessment, feedback on their answer, and progress summary
 - module_updates: an array of objects, each with module_id, point_id, and checked (boolean)
@@ -41,6 +43,7 @@ Rules:
 - Focus on uncompleted points first
 - Keep questions clear and focused
 - Reference module content naturally (e.g. "from the materials", "based on what you learned") — do NOT expose internal point IDs
+- If a canvas drawing is included below, incorporate it into your questions — ask about diagrams, relationships, or concepts the user drew
 
 ALL MODULES COMPLETE:
 If ALL module points are already checked, do NOT ask new questions. Instead, congratulate the student and suggest next steps such as reviewing the material, practicing further, or exploring a new topic. Keep it encouraging."""
@@ -88,7 +91,14 @@ def _format_core_context(state: AgentState, show_point_ids: bool = False) -> str
 
     canvas_raw = state.get("canvas_data") or ""
     if canvas_raw:
-        parts.append(f"--- User's Canvas Drawing ---\n{canvas_raw}")
+        parts.append(
+            "--- User's Canvas Drawing ---\n"
+            "Below is the raw Excalidraw scene data (JSON array of elements). "
+            "Each element has properties like type (rectangle, ellipse, arrow, text, freedraw, etc.), "
+            "position (x, y), dimensions (width, height), colors, stroke style, rotation, and text content. "
+            "Parse this JSON to understand the user's visual submission.\n"
+            f"{canvas_raw}"
+        )
 
     modules_raw = state.get("modules_json") or "[]"
     try:

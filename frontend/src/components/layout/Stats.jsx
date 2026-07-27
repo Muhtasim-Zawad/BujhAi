@@ -179,16 +179,32 @@ export default function Stats({ projectId, role }) {
 								<CardHeader>
 									<CardTitle className="truncate">{mod.title}</CardTitle>
 									<CardDescription>
-										{done}/{pts.length} points
+										{done}/{pts.length} points completed
 									</CardDescription>
 								</CardHeader>
-								<CardContent>
+								<CardContent className="flex flex-col gap-3">
 									<div className="relative h-2 w-full overflow-hidden rounded border border-black bg-background">
 										<div
 											className="h-full bg-primary transition-all duration-300"
 											style={{ width: `${pct}%` }}
 										/>
 									</div>
+									{pts.length > 0 && (
+										<ul className="flex flex-col gap-1.5">
+											{pts.map((pt) => (
+												<li key={pt.id} className="flex items-start gap-2 text-sm">
+													{pt.checked ? (
+														<Check className="size-4 shrink-0 mt-0.5 text-primary" />
+													) : (
+														<span className="size-4 shrink-0 mt-0.5 rounded-full border-2 border-muted-foreground/40" />
+													)}
+													<span className={pt.checked ? "text-foreground" : "text-muted-foreground"}>
+														{pt.text}
+													</span>
+												</li>
+											))}
+										</ul>
+									)}
 								</CardContent>
 							</Card>
 						);

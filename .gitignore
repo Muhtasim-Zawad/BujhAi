@@ -1,5 +1,6 @@
 REFACTORING-PLAN.md
 MULTI-USER-PLAN.md
+.opencode
 
 # Environment files (contain secrets)
 backend/.env

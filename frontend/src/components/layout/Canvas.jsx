@@ -1,13 +1,99 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Excalidraw } from "@excalidraw/excalidraw";
 import "@excalidraw/excalidraw/index.css";
 
 export function getCanvasScene(excalidrawRef) {
-	const api = excalidrawRef?.current;
-	if (!api) return null;
-	const elements = api.getSceneElements();
-	if (!elements || elements.length === 0) return null;
-	return JSON.stringify(elements);
+	const ref = excalidrawRef?.current;
+
+	// Try multiple ways to get scene data
+	if (!ref) {
+		console.warn("[Canvas] getCanvasScene: excalidrawRef.current is null");
+		return null;
+	}
+
+	try {
+		// Method 1: Use new approach where onChange data is stored
+		if (ref.sceneData) {
+			console.log("[Canvas] getCanvasScene: using sceneData from onChange");
+			return ref.sceneData;
+		}
+
+		// Method 2: Use getSceneElements if it exists (API method)
+		if (ref.getSceneElements && typeof ref.getSceneElements === "function") {
+			const elements = ref.getSceneElements?.();
+			console.log(
+				"[Canvas] getCanvasScene: got elements from API, count:",
+				elements?.length,
+			);
+			if (elements && elements.length > 0) {
+				return JSON.stringify(elements);
+			}
+		}
+
+		console.warn("[Canvas] getCanvasScene: no elements found in ref");
+		return null;
+	} catch (err) {
+		console.error("[Canvas] getCanvasScene: error getting scene", err);
+		return null;
+	}
+}
+
+// Wait for canvas to be ready with event listener + polling
+export async function waitForCanvasReady(excalidrawRef, maxWaitMs = 1000) {
+	const startTime = Date.now();
+	let checkCount = 0;
+
+	return new Promise((resolve) => {
+		// Set up event listener for canvas-ready event
+		const handleCanvasReady = () => {
+			const elapsed = Date.now() - startTime;
+			console.log(
+				"[Canvas] waitForCanvasReady: canvas-ready event received after",
+				elapsed,
+				"ms",
+			);
+			cleanup();
+			resolve(true);
+		};
+
+		const cleanup = () => {
+			clearInterval(pollInterval);
+			clearTimeout(timeoutId);
+			window.removeEventListener("canvas-ready", handleCanvasReady);
+		};
+
+		window.addEventListener("canvas-ready", handleCanvasReady);
+
+		// Also poll the ref in case it's already populated
+		const pollInterval = setInterval(() => {
+			checkCount++;
+			if (excalidrawRef?.current?.sceneData) {
+				const elapsed = Date.now() - startTime;
+				console.log(
+					"[Canvas] waitForCanvasReady: sceneData available after",
+					elapsed,
+					"ms (checks:",
+					checkCount + ")",
+				);
+				cleanup();
+				resolve(true);
+			}
+		}, 25);
+
+		// Timeout if neither happens
+		const timeoutId = setTimeout(() => {
+			const elapsed = Date.now() - startTime;
+			console.warn(
+				"[Canvas] waitForCanvasReady: TIMEOUT after",
+				elapsed,
+				"ms (checks:",
+				checkCount + "), sceneData available:",
+				!!excalidrawRef?.current?.sceneData,
+			);
+			cleanup();
+			resolve(false);
+		}, maxWaitMs);
+	});
 }
 
 export function loadCanvasScene(excalidrawRef, sceneJson) {
@@ -37,11 +123,37 @@ export default function Canvas({
 	height,
 	className,
 }) {
+	const currentDataRef = useRef({ elements: [], appState: null, files: null });
+
+	useEffect(() => {
+		console.log("[Canvas] useEffect: Canvas component mounted/updated");
+	}, []);
+
 	const onChange = useCallback(
-		(elements, state) => {
-			onSceneChange?.(elements);
+		(elements, appState, files) => {
+			console.log("[Canvas] onChange fired, elements count:", elements?.length);
+
+			// Store the latest scene data in ref
+			currentDataRef.current = { elements, appState, files };
+			const sceneData = JSON.stringify(elements);
+
+			// Sync to parent ref so getCanvasScene can access it
+			if (excalidrawRef) {
+				excalidrawRef.current = {
+					getSceneElements: () => elements,
+					getAppState: () => appState,
+					getFiles: () => files,
+					sceneData: sceneData,
+				};
+				console.log("[Canvas] Updated excalidrawRef.current with scene data");
+			}
+
+			// Signal canvas is ready
+			window.dispatchEvent(new CustomEvent("canvas-ready"));
+
+			onSceneChange?.(elements, appState, files);
 		},
-		[onSceneChange],
+		[onSceneChange, excalidrawRef],
 	);
 
 	return (
@@ -49,10 +161,8 @@ export default function Canvas({
 			className={className}
 			style={{ height: height || "100%", width: "100%" }}
 		>
-			<Excalidraw
-				ref={excalidrawRef}
-				onChange={onChange}
-			/>
+			{console.log("[Canvas] Rendering Excalidraw")}
+			<Excalidraw onChange={onChange} theme="light" />
 		</div>
 	);
 }
