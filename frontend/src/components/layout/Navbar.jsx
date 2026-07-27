@@ -1,11 +1,4 @@
 import { useNavigate } from "react-router-dom";
-import {
-	NavigationMenu,
-	NavigationMenuContent,
-	NavigationMenuItem,
-	NavigationMenuList,
-	NavigationMenuTrigger,
-} from "@/components/ui/navigation-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,10 +7,10 @@ import {
 	HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { Separator } from "@/components/ui/separator";
-import { User, Settings, LogOut, BookOpen, Palette } from "lucide-react";
+import { User, Settings, LogOut } from "lucide-react";
 import { useSession } from "@/hooks/useSession";
 
-export default function Navbar({ projects = [], onCreateProject, onJoinProject, onOpenProject }) {
+export default function Navbar({ projects = [], onCreateProject, onJoinProject, onOpenProject, onNavigate }) {
 	const navigate = useNavigate();
 	const { user, signOut } = useSession();
 
@@ -52,50 +45,24 @@ export default function Navbar({ projects = [], onCreateProject, onJoinProject, 
 
 				{/* Nav links */}
 				<div className="hidden md:flex items-center gap-8">
-					<NavigationMenu>
-						<NavigationMenuList className="gap-8">
-							<NavigationMenuItem>
-								<NavigationMenuTrigger className="flex items-center gap-1.5 font-semibold text-sm transition-colors hover:bg-primary-hover hover:text-primary-foreground data-open:bg-primary-hover data-open:text-primary-foreground data-popup-open:bg-primary-hover data-popup-open:text-primary-foreground">
-									Projects
-								</NavigationMenuTrigger>
-								<NavigationMenuContent className="border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] data-open:fade-in-100 data-open:zoom-in-100 data-closed:fade-out-100 data-closed:zoom-out-100">
-									<ul className="grid w-72 gap-1 p-2">
-										{projects.length === 0 ? (
-											<li className="px-2 py-4 text-center text-sm text-muted-foreground">
-												No projects yet
-											</li>
-										) : projects.map((project) => (
-											<li key={project.id}>
-												<button
-													onClick={() => onOpenProject?.(project)}
-													className="flex w-full flex-col items-start gap-0.5 rounded-sm p-2 text-left transition-colors hover:bg-primary-hover focus:bg-primary-hover data-active:bg-primary-hover cursor-pointer"
-												>
-													<span className="text-sm font-medium">
-														{project.title}
-													</span>
-													<span className="text-xs text-muted-foreground">
-														{project.description}
-													</span>
-												</button>
-											</li>
-										))}
-									</ul>
-								</NavigationMenuContent>
-							</NavigationMenuItem>
-							<NavigationMenuItem>
-								<span className="flex items-center gap-1.5 font-semibold text-sm text-muted-foreground cursor-default">
-									<BookOpen size={18} strokeWidth={2.5} />
-									Learn
-								</span>
-							</NavigationMenuItem>
-							<NavigationMenuItem>
-								<span className="flex items-center gap-1.5 font-semibold text-sm text-muted-foreground cursor-default">
-									<Palette size={18} strokeWidth={2.5} />
-									Canvas
-								</span>
-							</NavigationMenuItem>
-						</NavigationMenuList>
-					</NavigationMenu>
+					<button
+						onClick={() => onNavigate?.("projects")}
+						className="font-semibold text-sm text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
+					>
+						Home
+					</button>
+					<button
+						onClick={() => onNavigate?.("guide")}
+						className="font-semibold text-sm text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
+					>
+						Guide
+					</button>
+					<button
+						onClick={() => onNavigate?.("contact")}
+						className="font-semibold text-sm text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
+					>
+						Contact
+					</button>
 				</div>
 
 				{/* Right actions */}

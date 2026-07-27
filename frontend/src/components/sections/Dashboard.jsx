@@ -4,6 +4,8 @@ import Navbar from "../layout/Navbar";
 import { ProjectCard } from "../layout/ProjectCard";
 import DashboardResources from "../layout/DashboardResources";
 import DashboardStats from "../layout/DashboardStats";
+import DashboardGuide from "../layout/DashboardGuide";
+import DashboardContact from "../layout/DashboardContact";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +18,7 @@ import {
 	DialogClose,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { Plus, Trash2, FolderOpen, LogOut, Copy, Check } from "lucide-react";
+import { Plus, Trash2, FolderOpen, LogOut, Copy, Check, ArrowLeft } from "lucide-react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -164,16 +166,19 @@ export default function Dashboard() {
 				onCreateProject={() => setIsCreateOpen(true)}
 				onJoinProject={() => setIsJoinOpen(true)}
 				onOpenProject={(project) => navigate(`/project/${project.id}`)}
+				onNavigate={(page) => setSection(page)}
 			/>
 			<div className="mx-auto max-w-6xl px-6 py-12">
-				<div className="mb-10">
-					<h1 className="font-head text-4xl tracking-tight sm:text-5xl">
-						Welcome back, friend
-					</h1>
-					<p className="mt-2 text-lg text-muted-foreground">
-						Pick up where you left off or start something new.
-					</p>
-				</div>
+				{["projects", "resources", "stats"].includes(section) && (
+					<>
+						<div className="mb-10">
+							<h1 className="font-head text-4xl tracking-tight sm:text-5xl">
+								Welcome back, friend
+							</h1>
+							<p className="mt-2 text-lg text-muted-foreground">
+								Pick up where you left off or start something new.
+							</p>
+						</div>
 
 				{/* Toggle buttons */}
 				<div className="flex gap-2 mb-10">
@@ -192,6 +197,8 @@ export default function Dashboard() {
 						</button>
 					))}
 				</div>
+					</>
+				)}
 
 				{/* Projects */}
 				{section === "projects" && (
@@ -307,6 +314,32 @@ export default function Dashboard() {
 				{section === "resources" && <DashboardResources projects={projects} />}
 
 				{section === "stats" && <DashboardStats projects={projects} />}
+
+				{section === "guide" && (
+					<div>
+						<button
+							onClick={() => setSection("projects")}
+							className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-8 cursor-pointer"
+						>
+							<ArrowLeft className="size-4" />
+							Back to Home
+						</button>
+						<DashboardGuide />
+					</div>
+				)}
+
+				{section === "contact" && (
+					<div>
+						<button
+							onClick={() => setSection("projects")}
+							className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-8 cursor-pointer"
+						>
+							<ArrowLeft className="size-4" />
+							Back to Home
+						</button>
+						<DashboardContact />
+					</div>
+				)}
 
 				{/* Create project dialog */}
 				<Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
