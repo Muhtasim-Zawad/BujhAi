@@ -19,6 +19,7 @@ from app.models.user import User
 from app.models.user_point_progress import UserPointProgress
 from app.schemas.chat import ChatRequest
 from app.services.agent import stream_chat_agent
+from app.services.llm_fallback import FRIENDLY_ERROR, ModelExhaustedError
 from app.services.excalidraw import parse_scene
 from app.utils import nanoid
 
@@ -263,8 +264,10 @@ async def chat_stream(
                                     project.completed_at = datetime.datetime.utcnow()
                                     await save_db.commit()
                                 yield json.dumps({"type": "course_complete"})
+        except ModelExhaustedError:
+            yield f"data: {json.dumps({'type': 'error', 'text': FRIENDLY_ERROR, 'code': 'models_exhausted'})}\n\n"
         except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'text': str(e)})}\n\n"
+            yield f"data: {json.dumps({'type': 'error', 'text': str(e), 'code': 'unexpected_error'})}\n\n"
         finally:
             async with async_session() as save_db:
                 uid = user.id if role == "student" else None

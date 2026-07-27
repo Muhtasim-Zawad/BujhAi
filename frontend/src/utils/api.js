@@ -83,7 +83,9 @@ export async function streamChat(projectId, message, callbacks, canvasData = nul
             callbacks.onFinish?.(data.finishReason);
             break;
           case "error":
-            callbacks.onError?.(new Error(data.text));
+            const err = new Error(data.text);
+            if (data.code) err.code = data.code;
+            callbacks.onError?.(err);
             break;
         }
       } catch {

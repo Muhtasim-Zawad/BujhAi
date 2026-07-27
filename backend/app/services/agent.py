@@ -3,27 +3,17 @@ from __future__ import annotations
 import json
 from collections.abc import AsyncGenerator
 
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
-from langchain_groq import ChatGroq
+import logging
+
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
 from typing_extensions import TypedDict
 
 from app.config import settings
+from app.services.llm_fallback import create_chat, is_rate_limit_error
 from app.services.rag import search as rag_search
 
-_chat: ChatGroq | None = None
-
-
-def _get_chat() -> ChatGroq:
-    global _chat
-    if _chat is None:
-        _chat = ChatGroq(
-            model=settings.groq_model,
-            temperature=0.7,
-            max_tokens=4096,
-            api_key=settings.groq_api_key,
-        )
-    return _chat
+logger = logging.getLogger(__name__)
 
 
 EVALUATOR_SYSTEM = """You are an evaluator. Your role is to assess the student's understanding against the module checklist points and provide feedback. Do NOT proactively teach or lecture — respond specifically to what the student said and evaluate it. Keep responses encouraging and specific.
@@ -134,26 +124,36 @@ async def evaluate_node(state: AgentState) -> dict:
 Student's message to evaluate:
 {state['user_input']}"""
 
-    json_llm = _get_chat().bind(response_format={"type": "json_object"})
-    response = await json_llm.ainvoke([
-        SystemMessage(content=EVALUATOR_SYSTEM),
-        HumanMessage(content=prompt),
-    ])
+    models_to_try = [settings.groq_model, settings.groq_fallback_model]
+    response = None
+
+    for attempt_index, model in enumerate(models_to_try):
+        try:
+            chat = create_chat(model=model, api_key=settings.groq_api_key)
+            json_llm = chat.bind(response_format={"type": "json_object"})
+            response = await json_llm.ainvoke([
+                SystemMessage(content=EVALUATOR_SYSTEM),
+                HumanMessage(content=prompt),
+            ])
+            break
+        except Exception as e:
+            if is_rate_limit_error(e) and attempt_index < len(models_to_try) - 1:
+                logger.warning("[agent] evaluate_node: rate limited on %s, falling back to %s", model, models_to_try[attempt_index + 1])
+                continue
+            raise
 
     raw = response.content or "{}"
     try:
         parsed = json.loads(raw)
     except json.JSONDecodeError:
-        import logging
-        logging.warning("[agent] evaluate_node: failed to parse JSON response, raw=%s", raw[:200])
+        logger.warning("[agent] evaluate_node: failed to parse JSON response, raw=%s", raw[:200])
         return {"evaluator_response": raw, "module_updates": []}
 
     updates = parsed.get("module_updates", [])
-    import logging
     if updates:
-        logging.info("[agent] evaluate_node: %d module_updates returned", len(updates))
+        logger.info("[agent] evaluate_node: %d module_updates returned", len(updates))
     else:
-        logging.info("[agent] evaluate_node: no module_updates in response")
+        logger.info("[agent] evaluate_node: no module_updates in response")
 
     return {
         "evaluator_response": parsed.get("evaluation_text", raw),
@@ -178,9 +178,21 @@ async def student_node(state: AgentState) -> dict:
                 f"User message:\n{state['user_input']}"
     ))
 
+    models_to_try = [settings.groq_model, settings.groq_fallback_model]
     content = ""
-    async for chunk in _get_chat().astream(messages):
-        content += chunk.content if hasattr(chunk, "content") else ""
+
+    for attempt_index, model in enumerate(models_to_try):
+        try:
+            chat = create_chat(model=model, api_key=settings.groq_api_key)
+            async for chunk in chat.astream(messages):
+                content += chunk.content if hasattr(chunk, "content") else ""
+            break
+        except Exception as e:
+            if is_rate_limit_error(e) and attempt_index < len(models_to_try) - 1:
+                logger.warning("[agent] student_node: rate limited on %s, falling back to %s", model, models_to_try[attempt_index + 1])
+                content = ""
+                continue
+            raise
 
     return {"student_response": content}
 

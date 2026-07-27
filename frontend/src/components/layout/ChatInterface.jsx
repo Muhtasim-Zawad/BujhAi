@@ -168,13 +168,28 @@ export default function ChatInterface({ projectId, role }) {
 		console.error("Chat error:", err);
 		setIsLoading(false);
 		currentPersonaRef.current = null;
+
+		if (err.code === "models_exhausted") {
+			setMessages((prev) => [
+				...prev,
+				{
+					id: Date.now(),
+					role: "assistant",
+					persona: "error",
+					content: err.message,
+					timestamp: new Date(),
+				},
+			]);
+			return;
+		}
+
 		setMessages((prev) => [
 			...prev,
 			{
 				id: Date.now(),
 				role: "assistant",
 				persona: "student",
-				content: `**Error:** ${err.message}`,
+				content: err.message,
 				timestamp: new Date(),
 			},
 		]);
@@ -402,7 +417,7 @@ export default function ChatInterface({ projectId, role }) {
 								</div>
 							)}
 							<div className="flex max-w-[80%] flex-col gap-1">
-								{message.role === "assistant" && message.persona && (
+								{message.role === "assistant" && message.persona && message.persona !== "error" && (
 									<span
 										className={cn(
 											"text-xs font-semibold uppercase tracking-wide",
@@ -416,12 +431,14 @@ export default function ChatInterface({ projectId, role }) {
 								)}
 								<div
 									className={cn(
-										"rounded-xl border-2 border-black px-4 py-2.5 text-sm shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]",
+										"rounded-xl border-2 px-4 py-2.5 text-sm shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]",
 										message.role === "user"
-											? "bg-primary text-primary-foreground"
+											? "bg-primary text-primary-foreground border-black"
 											: message.persona === "evaluator"
-												? "bg-purple-50 text-card-foreground"
-												: "bg-card text-card-foreground",
+												? "bg-purple-50 text-card-foreground border-black"
+												: message.persona === "error"
+													? "bg-amber-50 text-amber-900 border-amber-400"
+													: "bg-card text-card-foreground border-black",
 									)}
 								>
 									<p className="whitespace-pre-wrap">{message.content}</p>
