@@ -433,14 +433,14 @@ export default function Dashboard() {
 															</CardContent>
 														</CardHeader>
 													</Card>
-													<Card>
-														<CardHeader>
-															<CardTitle>Messages</CardTitle>
-															<CardContent className="pt-0 px-0">
-																<p className="text-2xl font-bold">{statsMap[project.id].total_messages}</p>
-															</CardContent>
-														</CardHeader>
-													</Card>
+												<Card>
+													<CardHeader>
+														<CardTitle>Enrolled</CardTitle>
+														<CardContent className="pt-0 px-0">
+															<p className="text-2xl font-bold">{statsMap[project.id].total_enrolled}</p>
+														</CardContent>
+													</CardHeader>
+												</Card>
 													<Card>
 														<CardHeader>
 															<CardTitle>Modules</CardTitle>

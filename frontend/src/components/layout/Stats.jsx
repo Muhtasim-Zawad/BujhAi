@@ -14,7 +14,7 @@ import {
 	AccordionContent,
 } from "@/components/ui/accordion";
 import { fetchStats, fetchResources, fetchModules, getEnrolledStats } from "@/utils/api";
-import { Video, Globe, Map, ExternalLink, Users } from "lucide-react";
+import { Video, Globe, Map, ExternalLink, Users, Copy, Check } from "lucide-react";
 
 export default function Stats({ projectId, role }) {
 	const [section, setSection] = useState("results");
@@ -54,6 +54,16 @@ export default function Stats({ projectId, role }) {
 		window.addEventListener("materials-changed", handler);
 		return () => window.removeEventListener("materials-changed", handler);
 	}, [projectId, role]);
+
+	const [copied, setCopied] = useState(false);
+
+	const handleCopyCode = async (code) => {
+		try {
+			await navigator.clipboard.writeText(code);
+			setCopied(true);
+			setTimeout(() => setCopied(false), 2000);
+		} catch {}
+	};
 
 	const tabs = role === "owner"
 		? ["results", "modules", "resources", "enrolled"]
@@ -112,12 +122,12 @@ export default function Stats({ projectId, role }) {
 					</Card>
 					<Card>
 						<CardHeader>
-							<CardTitle>Chat Messages</CardTitle>
-							<CardDescription>{stats.total_messages} total</CardDescription>
+							<CardTitle>Enrolled Students</CardTitle>
+							<CardDescription>{stats.total_enrolled} total</CardDescription>
 						</CardHeader>
 						<CardContent>
 							<p className="text-sm text-muted-foreground">
-								Messages exchanged with the AI tutor across all sessions.
+								{stats.enrolled_completed} completed.
 							</p>
 						</CardContent>
 					</Card>
@@ -133,6 +143,24 @@ export default function Stats({ projectId, role }) {
 						</CardContent>
 					</Card>
 					</div>
+			)}
+
+			{section === "results" && role === "owner" && stats.join_code && (
+				<div className="flex items-center justify-between rounded-xl border-2 border-black bg-muted/30 px-5 py-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+					<div className="flex items-center gap-3">
+						<span className="text-sm font-medium">Invite Code:</span>
+						<code className="rounded-md border-2 border-black bg-background px-3 py-1 text-sm font-mono font-bold tracking-wider">
+							{stats.join_code}
+						</code>
+					</div>
+					<button
+						onClick={() => handleCopyCode(stats.join_code)}
+						className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border-2 border-black bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-y-0.5 active:translate-y-1 active:shadow-none"
+					>
+						{copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+						{copied ? "Copied" : "Copy"}
+					</button>
+				</div>
 			)}
 
 			{section === "modules" && (

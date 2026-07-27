@@ -6,7 +6,7 @@ from app.database import get_db
 from app.deps import get_current_user, get_enrollment_role, verify_project_access, verify_project_owner
 from app.models.enrollment import ProjectEnrollment
 from app.models.material import Material
-from app.models.message import Message
+
 from app.models.module import Module, ModulePoint
 from app.models.project import Project
 from app.models.user import User
@@ -34,10 +34,18 @@ async def get_stats(
     )
     total_materials = materials.scalar() or 0
 
-    messages = await db.execute(
-        select(func.count(Message.id)).where(Message.project_id == project_id)
+    enrolled = await db.execute(
+        select(func.count(ProjectEnrollment.id)).where(ProjectEnrollment.project_id == project_id)
     )
-    total_messages = messages.scalar() or 0
+    total_enrolled = enrolled.scalar() or 0
+
+    completed_enrolled = await db.execute(
+        select(func.count(ProjectEnrollment.id)).where(
+            ProjectEnrollment.project_id == project_id,
+            ProjectEnrollment.completed_at.isnot(None),
+        )
+    )
+    enrolled_completed = completed_enrolled.scalar() or 0
 
     modules = await db.execute(
         select(func.count(Module.id)).where(Module.project_id == project_id)
@@ -90,10 +98,12 @@ async def get_stats(
     return ProjectStats(
         total_materials=total_materials,
         total_chunks=total_chunks,
-        total_messages=total_messages,
+        total_enrolled=total_enrolled,
+        enrolled_completed=enrolled_completed,
         total_modules=total_modules,
         module_points_completed=module_points_completed,
         module_points_total=module_points_total,
+        join_code=project.join_code or "",
     )
 
 
