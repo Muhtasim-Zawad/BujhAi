@@ -285,6 +285,8 @@ async def chat_stream(
                                     await save_db.commit()
                                 yield json.dumps({"type": "course_complete"})
         except Exception as e:
+            evaluator_text = ""
+            student_text = ""
             if is_rate_limit_error(e):
                 async with async_session() as delete_db:
                     msg = await delete_db.get(Message, user_msg.id)

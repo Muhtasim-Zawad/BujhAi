@@ -8,6 +8,7 @@ import Canvas, {
 	loadCanvasScene,
 	waitForCanvasReady,
 } from "@/components/layout/Canvas";
+import { toast } from "sonner";
 import {
 	streamChat,
 	sendStt,
@@ -51,6 +52,9 @@ export default function ChatInterface({ projectId, role }) {
 	const timerRef = useRef(null);
 	const currentPersonaRef = useRef(null);
 	const inputEnabledRef = useRef(false);
+	const evalMsgIdRef = useRef(null);
+	const studentMsgIdRef = useRef(null);
+	const userMsgIdRef = useRef(null);
 	const [savedCanvasScene, setSavedCanvasScene] = useState(null);
 	const [hasMaterials, setHasMaterials] = useState(true);
 
@@ -136,6 +140,7 @@ export default function ChatInterface({ projectId, role }) {
 
 	const onEvaluatorStart = useCallback(() => {
 		const id = Date.now();
+		evalMsgIdRef.current = id;
 		currentPersonaRef.current = "evaluator";
 		setMessages((prev) => [
 			...prev,
@@ -169,11 +174,13 @@ export default function ChatInterface({ projectId, role }) {
 	}, []);
 
 	const onStudentStart = useCallback(() => {
+		const id = Date.now();
+		studentMsgIdRef.current = id;
 		currentPersonaRef.current = "student";
 		setMessages((prev) => [
 			...prev,
 			{
-				id: Date.now(),
+				id,
 				role: "assistant",
 				persona: "student",
 				content: "",
@@ -202,16 +209,16 @@ export default function ChatInterface({ projectId, role }) {
 
 		if (err.code === "rate_limit") {
 			setInput(err.originalMessage || "");
-			setMessages((prev) => [
-				...prev,
-				{
-					id: Date.now(),
-					role: "assistant",
-					persona: "error",
-					content: err.message,
-					timestamp: new Date(),
-				},
-			]);
+			toast.error(err.message, { duration: 5000 });
+			const evalId = evalMsgIdRef.current;
+			const studentId = studentMsgIdRef.current;
+			const userId = userMsgIdRef.current;
+			evalMsgIdRef.current = null;
+			studentMsgIdRef.current = null;
+			userMsgIdRef.current = null;
+			setMessages((prev) =>
+				prev.filter((m) => m.id !== evalId && m.id !== studentId && m.id !== userId),
+			);
 			return;
 		}
 
@@ -274,10 +281,12 @@ export default function ChatInterface({ projectId, role }) {
 			canvasData ? canvasData.substring(0, 60) + "..." : "null",
 		);
 
+		const userId = Date.now();
+		userMsgIdRef.current = userId;
 		setMessages((prev) => [
 			...prev,
 			{
-				id: Date.now(),
+				id: userId,
 				role: "user",
 				content: text,
 				timestamp: new Date(),
