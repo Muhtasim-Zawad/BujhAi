@@ -1,4 +1,5 @@
 import { useState } from "react";
+import profilePicture from "@/assets/images/profile_picture.jpeg";
 import {
 	Mail,
 	Globe,
@@ -101,18 +102,22 @@ export default function DashboardContact() {
 				</p>
 			</div>
 			<div className="flex flex-col gap-6 md:flex-row md:items-stretch">
-				<div className="shrink-0 w-full md:w-64 rounded border-2 border-black bg-muted flex items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-					<span className="text-sm text-muted-foreground">Photo</span>
+				<div className="shrink-0 w-full md:w-64 rounded border-2 border-black overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+					<img
+						src={profilePicture}
+						alt="Profile"
+						className="w-full h-full object-cover"
+					/>
 				</div>
 				<div className="flex-1 flex flex-col gap-4">
 					<p className="text-sm text-muted-foreground leading-relaxed">
-						Hi, I'm a full-stack developer passionate about building tools that
-						make learning easier and more interactive. I built BujhAI to explore
-						how AI can act as a personal tutor — guiding students through
-						materials, checking understanding, and adapting to their pace. The
-						project is open-source and always evolving. Whether you have
-						feedback, a collaboration idea, or just want to say hi, I'd love to
-						hear from you. Let's build something meaningful together.
+						Hi, I'm Muhtasim Zawad, a full-stack developer passionate about
+						building tools that make learning easier and more interactive. I
+						built BujhAI to explore how AI can act as a personal tutor — guiding
+						students through materials, checking understanding, and adapting to
+						their pace. The project is open-source and always evolving. Whether
+						you have feedback, a collaboration idea, or just want to say hi, I'd
+						love to hear from you. Let's build something meaningful together.
 					</p>
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 						{contacts.map((c) => (

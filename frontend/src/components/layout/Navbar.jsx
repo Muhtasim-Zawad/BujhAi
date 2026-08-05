@@ -7,7 +7,7 @@ import {
 	HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { Separator } from "@/components/ui/separator";
-import { User, Settings, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { useSession } from "@/hooks/useSession";
 
 export default function Navbar({ projects = [], onCreateProject, onJoinProject, onOpenProject, onNavigate }) {
@@ -102,15 +102,15 @@ export default function Navbar({ projects = [], onCreateProject, onJoinProject, 
 									<Avatar size="sm">
 								<AvatarFallback>{initials || "U"}</AvatarFallback>
 									</Avatar>
-									<div className="flex flex-col">
-										<span className="text-sm font-medium">{userName}</span>
-										<span className="text-xs text-muted-foreground">
+									<div className="flex flex-col min-w-0">
+										<span className="text-sm font-medium truncate">{userName}</span>
+										<span className="text-xs text-muted-foreground break-all">
 											{userEmail}
 										</span>
 									</div>
 								</div>
 								<Separator />
-								<button className="flex w-full items-center gap-2 rounded-sm px-1 py-1.5 text-sm transition-colors hover:bg-primary-hover hover:text-primary-foreground">
+								{/* <button className="flex w-full items-center gap-2 rounded-sm px-1 py-1.5 text-sm transition-colors hover:bg-primary-hover hover:text-primary-foreground">
 									<User className="size-4" />
 									Profile
 								</button>
@@ -118,7 +118,7 @@ export default function Navbar({ projects = [], onCreateProject, onJoinProject, 
 									<Settings className="size-4" />
 									Settings
 								</button>
-								<Separator />
+								<Separator /> */}
 								<button
 									onClick={handleSignOut}
 									className="flex w-full items-center gap-2 rounded-sm px-1 py-1.5 text-sm text-destructive transition-colors hover:bg-primary-hover hover:text-primary-foreground cursor-pointer"

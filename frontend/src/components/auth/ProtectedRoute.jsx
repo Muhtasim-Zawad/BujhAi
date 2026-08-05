@@ -7,7 +7,7 @@ export default function ProtectedRoute({ children }) {
 	if (loading) return null;
 
 	if (!user) {
-		return <Navigate to="/auth" replace />;
+		return <Navigate to="/" replace />;
 	}
 
 	return children;
