@@ -1,8 +1,45 @@
 # BujhAI — Project Description, User Flows, Stack & Architecture
 
+---
+
+## Table of Contents
+
+**Project Overview**
+
+- [1. Overview](#1-overview)
+- [2. User Flows](#2-user-flows)
+  - [A. Authentication & Onboarding](#a-authentication--onboarding)
+  - [B. Content Owner Flow (creates a "course")](#b-content-owner-flow-creates-a-course)
+  - [C. Learner Flow (student, joined by code)](#c-learner-flow-student-joined-by-code)
+  - [D. The Talking Session (core loop)](#d-the-talking-session-core-loop)
+- [3. Tech Stack & Rationale](#3-tech-stack--rationale)
+- [4. Storage (what lives where)](#4-storage-what-lives-where)
+- [5. Backend Architecture Details & Justification](#5-backend-architecture-details--justification)
+  - [5.1 Auth-first request flow](#51-auth-first-request-flow)
+  - [5.2 RAG / materials ingestion](#52-rag--materials-ingestion)
+  - [5.3 AI generation](#53-ai-generation)
+  - [5.4 Dual-persona agent](#54-dual-persona-agent)
+  - [5.5 Chat + persistence](#55-chat--persistence)
+  - [5.6 Canvas + voice](#56-canvas--voice)
+  - [5.7 Role-based progress model](#57-role-based-progress-model)
+- [6. Data Flow / Endpoint Map](#6-data-flow--endpoint-map)
+
+**Running the project**
+
+- [Getting Started (Running the Project)](#getting-started-running-the-project)
+  - [Prerequisites](#prerequisites)
+  - [Project Layout](#project-layout)
+  - [1. Backend Setup](#1-backend-setup)
+  - [2. Frontend Setup](#2-frontend-setup)
+  - [3. First Run Walkthrough](#3-first-run-walkthrough)
+  - [4. Useful Commands](#4-useful-commands)
+  - [5. Troubleshooting](#5-troubleshooting)
+
+---
+
 ## 1. Overview
 
-**BujhAI** is an AI-powered online learning platform. Course/project owners upload study materials (PDF/TXT/DOCX), and the system automatically generates a structured curriculum — titled **modules** with checklist/evaluation **points** — plus a curated set of learning resources (2 YouTube videos, 2 online tutorials, and a study roadmap). Learners then study through a talking session with a **dual-persona AI tutor** that both evaluates their understanding and keeps asking questions, alongside an optional **zoomable whiteboard** (Excalidraw) they can draw on and include as part of their answers. An owner can invite others via a 7-character join code; each enrolled student gets their own persistent progress, chat history, and canvas.
+**BujhAI** is an AI-powered online learning platform built around the **Feynman Technique** — the idea that you truly understand a topic only when you can explain it simply. Instead of passively reading, learners actively **teach the material back**: they explain concepts in their own words (typed or spoken), while a **dual-persona AI tutor** evaluates their explanation, checks it against the curriculum, and asks the next question to expose gaps in their understanding. Course/project owners upload study materials (PDF/TXT/DOCX), and the system automatically generates a structured curriculum — titled **modules** with checklist/evaluation **points** — plus a curated set of learning resources (YouTube videos, online tutorials, and a study roadmap). Learners can also draw on an optional **zoomable whiteboard** (Excalidraw) and include their diagrams as part of their explanations. An owner can invite others via a 7-character join code; each enrolled student gets their own persistent progress, chat history, and canvas.
 
 The frontend lives in `frontend/` (React 19 + Vite), the backend in `backend/` (FastAPI). The app pairs an LLM tutor with a RAG pipeline over the owner's uploaded materials, and tracks learner progress all the way to a "course complete" state.
 
@@ -27,16 +64,18 @@ The frontend lives in `frontend/` (React 19 + Vite), the backend in `backend/` (
 
 1. Dashboard → **Join** with a 7-char code (`POST /projects/join-by-code`).
 2. Enters the course read-only (materials/modules viewable, cannot edit).
-3. **Study tab**: chatting with the dual tutor; students get their own persisted chat history, canvas, and progress. Graded checkboxes update **only via the AI agent** during chat (they cannot toggle their own).
+3. **Study tab**: chatting with the dual tutor — the learner **teaches the topic back** in their own words while the AI evaluates and probes (Feynman Technique). Students get their own persisted chat history, canvas, and progress. Graded checkboxes update **only via the AI agent** during chat (they cannot toggle their own).
 4. When every point is demonstrated, the backend fires a `course_complete` SSE event → trophy UI and the course counts as completed.
 
-### D. The Talking Session (core loop)
+### D. The Talking Session (core loop) — learning by teaching
 
-For each learner message, the backend runs a LangGraph pipeline and streams back (SSE) three phases:
+The session applies the **Feynman Technique**: the learner is the teacher, and the AI tutors the learner. Each learner message is an **explanation** of a concept in their own words (typed, spoken via voice input, or drawn on the canvas). The backend runs a LangGraph pipeline and streams back (SSE) three phases:
 
-1. **Evaluator** → assessment text; issues `module_update` events (which points to check/uncheck).
-2. **Tutor/Student persona** → asks the next checkpoint question (streamed tokens).
+1. **Evaluator** → assesses how well the learner's explanation demonstrates understanding of the module points; issues `module_update` events (which points to check/uncheck). Misunderstandings are surfaced so the learner can refine their explanation.
+2. **Tutor/Student persona** → does not explain anything itself; instead it asks the next checkpoint question, forcing the learner to keep teaching the topic back and uncover gaps (streamed tokens).
 3. `finish` event terminates the stream; both responses are persisted as two DB `messages`.
+
+This "explain it, get evaluated, get asked more" loop continues until the learner has demonstrated every learning objective — true mastery through active recall and teaching.
 
 ## 3. Tech Stack & Rationale
 
@@ -252,13 +291,13 @@ Frontend is now available at `http://localhost:5173` (the backend CORS whitelist
 
 ## 4. Useful Commands
 
-| Action                    | Command (from the relevant folder)                 |
-| ------------------------- | --------------------------------------------------- |
-| Backend dev server        | `uvicorn app.main:app --reload --port 8999`         |
-| Run DB migrations         | `alembic upgrade head`                              |
-| Frontend dev server       | `npm run dev`                                       |
-| Frontend production build | `npm run build`                                     |
-| Frontend lint             | `npm run lint`                                      |
+| Action                    | Command (from the relevant folder)          |
+| ------------------------- | ------------------------------------------- |
+| Backend dev server        | `uvicorn app.main:app --reload --port 8999` |
+| Run DB migrations         | `alembic upgrade head`                      |
+| Frontend dev server       | `npm run dev`                               |
+| Frontend production build | `npm run build`                             |
+| Frontend lint             | `npm run lint`                              |
 
 ## 5. Troubleshooting
 
